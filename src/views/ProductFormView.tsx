@@ -699,6 +699,9 @@ export function ProductFormView({
             isLoadingOffers={isLoadingOffers}
             onOfferSaved={handleOfferSaved}
             onOfferDeleted={handleOfferDeleted}
+            productName={name}
+            productId={productId}
+            isNewProduct={!Boolean(productId)}
           />
 
           {/* 6. Specifications Builder */}

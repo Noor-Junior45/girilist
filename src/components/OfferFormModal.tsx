@@ -25,7 +25,13 @@ interface OfferFormModalProps {
   offer: Offer | null; // If null, create mode
   isOpen: boolean;
   onClose: () => void;
-  onSaved: (savedOffer: Offer) => void;
+  onSaved: (savedOffer: Offer, isForCurrentProduct?: boolean) => void;
+  currentProductContext?: {
+    id?: string;
+    name?: string;
+    category?: CategoryScope;
+    isNewProduct?: boolean;
+  };
 }
 
 export function OfferFormModal({
@@ -33,6 +39,7 @@ export function OfferFormModal({
   isOpen,
   onClose,
   onSaved,
+  currentProductContext,
 }: OfferFormModalProps) {
   const isEditing = Boolean(offer?.id);
   const { showToast } = useToast();
@@ -139,8 +146,21 @@ export function OfferFormModal({
       };
     } else {
       // Create mode reset
-      setCode('');
-      setTitle('');
+      const prodName = currentProductContext?.name?.trim() || '';
+      const cleanProdTag = prodName.replace(/[^a-zA-Z0-9]/g, '').slice(0, 5).toUpperCase();
+      
+      if (currentProductContext) {
+        setCode(cleanProdTag ? `OFFER-${cleanProdTag}10` : 'SPECIAL10');
+        setTitle(prodName ? `Special Deal on ${prodName}` : 'Exclusive Product Offer');
+        setScopeMode('current_product');
+        setCategoryScope(currentProductContext.category || 'all');
+      } else {
+        setCode('');
+        setTitle('');
+        setScopeMode('all');
+        setCategoryScope('all');
+      }
+
       setDescription('');
       setDiscountType('percentage');
       setDiscountValue('10');
@@ -150,11 +170,9 @@ export function OfferFormModal({
       setValidUntil('');
       setIsActive(true);
       setBannerImage(null);
-      setScopeMode('all');
-      setCategoryScope('all');
-      setSelectedProductIds([]);
+      setSelectedProductIds(currentProductContext?.id ? [currentProductContext.id] : []);
     }
-  }, [isOpen, offer]);
+  }, [isOpen, offer, currentProductContext]);
 
   if (!isOpen) return null;
 
@@ -190,125 +208,141 @@ export function OfferFormModal({
         ? parseFloat(maxDiscount)
         : null;
 
-    if (scopeMode === 'specific' && selectedProductIds.length === 0) {
-      setFormError('Please select at least 1 product for the specific products scope, or change the scope mode.');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Check code uniqueness
-      const checkQuery = supabase
-        .from('offers')
-        .select('id, code')
-        .ilike('code', cleanCode);
-
-      if (isEditing && offer?.id) {
-        checkQuery.neq('id', offer.id);
-      }
-
-      const { data: existingCodes, error: checkError } = await checkQuery;
-      if (checkError) throw checkError;
-
-      if (existingCodes && existingCodes.length > 0) {
-        setFormError(`Coupon code "${cleanCode}" is already taken by another offer.`);
+      if (scopeMode === 'specific' && selectedProductIds.length === 0) {
+        setFormError('Please select at least 1 product for the specific products scope, or change the scope mode.');
         setIsSubmitting(false);
         return;
       }
 
-      let finalCategoryScope: CategoryScope = 'all';
-      if (scopeMode === 'category') {
-        finalCategoryScope = categoryScope;
-      } else if (scopeMode === 'specific') {
-        finalCategoryScope = 'all';
+      let isForCurrentProd = false;
+      if (scopeMode === 'current_product') {
+        isForCurrentProd = true;
+      } else if (scopeMode === 'specific' && currentProductContext?.id) {
+        isForCurrentProd = selectedProductIds.includes(currentProductContext.id);
       }
 
-      const offerPayload: Partial<Offer> = {
-        code: cleanCode,
-        title: title.trim(),
-        description: description.trim() || null,
-        discount_type: discountType,
-        discount_value: parsedVal,
-        min_order_value: parsedMinOrder,
-        max_discount: parsedMaxDiscount,
-        category_scope: finalCategoryScope,
-        banner_image: bannerImage || null,
-        valid_from: validFrom ? new Date(validFrom).toISOString() : new Date().toISOString(),
-        valid_until: validUntil ? new Date(`${validUntil}T23:59:59Z`).toISOString() : null,
-        is_active: isActive,
-        updated_at: new Date().toISOString(),
-      };
+      setIsSubmitting(true);
 
-      let savedRecord: Offer;
-
-      if (isEditing && offer?.id) {
-        const { data: updatedData, error: updateError } = await supabase
+      try {
+        // Check code uniqueness
+        const checkQuery = supabase
           .from('offers')
-          .update(offerPayload)
-          .eq('id', offer.id)
-          .select('*')
-          .single();
+          .select('id, code')
+          .ilike('code', cleanCode);
 
-        if (updateError) throw updateError;
-        savedRecord = updatedData;
-      } else {
-        const { data: insertedData, error: insertError } = await supabase
-          .from('offers')
-          .insert(offerPayload)
-          .select('*')
-          .single();
-
-        if (insertError) throw insertError;
-        savedRecord = insertedData;
-      }
-
-      // Sync offer_products relations
-      const { error: deleteRelError } = await supabase
-        .from('offer_products')
-        .delete()
-        .eq('offer_id', savedRecord.id);
-
-      if (deleteRelError) {
-        console.warn('Error clearing old offer_products:', deleteRelError);
-      }
-
-      if (scopeMode === 'specific' && selectedProductIds.length > 0) {
-        const relationRows = selectedProductIds.map((pid) => ({
-          offer_id: savedRecord.id,
-          product_id: pid,
-        }));
-
-        const { error: insertRelError } = await supabase
-          .from('offer_products')
-          .insert(relationRows);
-
-        if (insertRelError) {
-          console.warn('Error inserting offer_products:', insertRelError);
+        if (isEditing && offer?.id) {
+          checkQuery.neq('id', offer.id);
         }
+
+        const { data: existingCodes, error: checkError } = await checkQuery;
+        if (checkError) throw checkError;
+
+        if (existingCodes && existingCodes.length > 0) {
+          setFormError(`Coupon code "${cleanCode}" is already taken by another offer.`);
+          setIsSubmitting(false);
+          return;
+        }
+
+        let finalCategoryScope: CategoryScope = 'all';
+        if (scopeMode === 'category') {
+          finalCategoryScope = categoryScope;
+        } else if (scopeMode === 'specific' || scopeMode === 'current_product') {
+          finalCategoryScope = 'all';
+        }
+
+        const offerPayload: Partial<Offer> = {
+          code: cleanCode,
+          title: title.trim(),
+          description: description.trim() || null,
+          discount_type: discountType,
+          discount_value: parsedVal,
+          min_order_value: parsedMinOrder,
+          max_discount: parsedMaxDiscount,
+          category_scope: finalCategoryScope,
+          banner_image: bannerImage || null,
+          valid_from: validFrom ? new Date(validFrom).toISOString() : new Date().toISOString(),
+          valid_until: validUntil ? new Date(`${validUntil}T23:59:59Z`).toISOString() : null,
+          is_active: isActive,
+          updated_at: new Date().toISOString(),
+        };
+
+        let savedRecord: Offer;
+
+        if (isEditing && offer?.id) {
+          const { data: updatedData, error: updateError } = await supabase
+            .from('offers')
+            .update(offerPayload)
+            .eq('id', offer.id)
+            .select('*')
+            .single();
+
+          if (updateError) throw updateError;
+          savedRecord = updatedData;
+        } else {
+          const { data: insertedData, error: insertError } = await supabase
+            .from('offers')
+            .insert(offerPayload)
+            .select('*')
+            .single();
+
+          if (insertError) throw insertError;
+          savedRecord = insertedData;
+        }
+
+        // Sync offer_products relations
+        const { error: deleteRelError } = await supabase
+          .from('offer_products')
+          .delete()
+          .eq('offer_id', savedRecord.id);
+
+        if (deleteRelError) {
+          console.warn('Error clearing old offer_products:', deleteRelError);
+        }
+
+        if (scopeMode === 'specific' && selectedProductIds.length > 0) {
+          const relationRows = selectedProductIds.map((pid) => ({
+            offer_id: savedRecord.id,
+            product_id: pid,
+          }));
+
+          const { error: insertRelError } = await supabase
+            .from('offer_products')
+            .insert(relationRows);
+
+          if (insertRelError) {
+            console.warn('Error inserting offer_products:', insertRelError);
+          }
+        } else if (scopeMode === 'current_product' && currentProductContext?.id) {
+          const { error: insertCurrentRelError } = await supabase
+            .from('offer_products')
+            .insert([{ offer_id: savedRecord.id, product_id: currentProductContext.id }]);
+
+          if (insertCurrentRelError) {
+            console.warn('Error inserting current product offer relation:', insertCurrentRelError);
+          }
+        }
+
+        showToast({
+          type: 'success',
+          title: isEditing ? 'Offer Updated' : 'Offer Created',
+          description: `Promo voucher "${savedRecord.code}" saved successfully.`,
+        });
+
+        onSaved(savedRecord, isForCurrentProd);
+        onClose();
+      } catch (err: unknown) {
+        console.error('Error saving offer in modal:', err);
+        const msg = err instanceof Error ? err.message : 'Failed to save offer.';
+        setFormError(msg);
+        showToast({
+          type: 'error',
+          title: 'Save Failed',
+          description: msg,
+        });
+      } finally {
+        setIsSubmitting(false);
       }
-
-      showToast({
-        type: 'success',
-        title: isEditing ? 'Offer Updated' : 'Offer Created',
-        description: `Promo voucher "${savedRecord.code}" saved successfully.`,
-      });
-
-      onSaved(savedRecord);
-      onClose();
-    } catch (err: unknown) {
-      console.error('Error saving offer in modal:', err);
-      const msg = err instanceof Error ? err.message : 'Failed to save offer.';
-      setFormError(msg);
-      showToast({
-        type: 'error',
-        title: 'Save Failed',
-        description: msg,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    };
 
   return (
     <div
@@ -493,13 +527,44 @@ export function OfferFormModal({
             </div>
           </div>
 
-          {/* Scope Mode (Storewide vs Category vs Specific) */}
+          {/* Scope Mode (Storewide vs Category vs Specific vs Current Product) */}
           <div className="space-y-3">
-            <label className="block font-mono text-[10px] uppercase tracking-wider font-bold text-[#1a1716]/80">
-              Applicability & Scope across Products
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block font-mono text-[10px] uppercase tracking-wider font-bold text-[#1a1716]/80">
+                Applicability & Scope across Products
+              </label>
+              {currentProductContext && (
+                <span className="font-mono text-[9px] px-2 py-0.5 bg-emerald-100 text-emerald-900 font-bold flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5 text-emerald-700" />
+                  Listing: {currentProductContext.name || 'New Product'}
+                </span>
+              )}
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className={`grid grid-cols-1 ${currentProductContext ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'} gap-2.5`}>
+              {currentProductContext && (
+                <button
+                  type="button"
+                  onClick={() => setScopeMode('current_product')}
+                  className={`p-2.5 border text-left flex flex-col justify-between gap-1.5 transition cursor-pointer relative overflow-hidden ${
+                    scopeMode === 'current_product'
+                      ? 'bg-[#2e4a3d] text-white border-[#2e4a3d] ring-1 ring-[#2e4a3d]'
+                      : 'bg-emerald-50/50 border-emerald-300 text-emerald-950 hover:bg-emerald-100/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold flex items-center gap-1">
+                      <Sparkles className={`w-3 h-3 ${scopeMode === 'current_product' ? 'text-amber-300' : 'text-emerald-700'}`} />
+                      This Product Only
+                    </span>
+                    {scopeMode === 'current_product' && <Check className="w-3.5 h-3.5 text-amber-300" />}
+                  </div>
+                  <span className={`text-[10px] ${scopeMode === 'current_product' ? 'text-emerald-100' : 'text-emerald-800/80'}`}>
+                    {currentProductContext.isNewProduct ? 'Exclusive for this new listing' : 'Exclusive to this item'}
+                  </span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => setScopeMode('all')}
@@ -550,10 +615,22 @@ export function OfferFormModal({
                   {scopeMode === 'specific' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
                 </div>
                 <span className={`text-[10px] ${scopeMode === 'specific' ? 'text-white/70' : 'text-[#1a1716]/50'}`}>
-                  Only selected items
+                  Multiple selected items
                 </span>
               </button>
             </div>
+
+            {scopeMode === 'current_product' && (
+              <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-950 font-mono text-xs space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-emerald-900 text-[11px] uppercase tracking-wide">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  Individual Product Exclusive Offer
+                </div>
+                <p className="text-[11px] text-emerald-800 leading-relaxed">
+                  This offer will be specifically attached to <strong>"{currentProductContext?.name || 'this new item'}"</strong>. {currentProductContext?.isNewProduct ? 'It will be automatically linked as soon as you finish and publish this product listing.' : 'It will be attached immediately.'}
+                </p>
+              </div>
+            )}
 
             {scopeMode === 'category' && (
               <div className="p-3 bg-[#f2efeb]/50 border border-[#1a1716]/10 flex items-center gap-3">

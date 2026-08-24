@@ -2,7 +2,7 @@ export type ProductCategory = 'electrical' | 'construction';
 
 export type DiscountType = 'percentage' | 'flat';
 export type CategoryScope = 'all' | 'electrical' | 'construction';
-export type OfferScopeMode = 'all' | 'category' | 'specific';
+export type OfferScopeMode = 'all' | 'category' | 'specific' | 'current_product';
 
 export interface Offer {
   id: string;
