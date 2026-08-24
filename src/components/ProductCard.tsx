@@ -6,7 +6,6 @@ import {
   Zap, 
   HardHat, 
   Flame, 
-  Clock, 
   Sparkles, 
   AlertCircle, 
   Image as ImageIcon,
@@ -75,72 +74,61 @@ export function ProductCard({
   return (
     <div
       id={`product-card-${product.id}`}
-      className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col overflow-hidden group"
+      className="bg-white border border-[#1a1716]/10 flex flex-col justify-between group hover:border-[#2e4a3d]/50 transition-all shadow-2xs"
     >
-      {/* Card Header & Thumbnail */}
-      <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden border-b border-slate-100">
-        {thumbnail ? (
-          <img
-            src={thumbnail}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            referrerPolicy="no-referrer"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=60';
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1">
-            <ImageIcon className="w-8 h-8" />
-            <span className="text-xs">No image</span>
-          </div>
-        )}
+      <div>
+        {/* Thumbnail & Badges Container */}
+        <div className="relative aspect-4/3 bg-[#f2efeb] overflow-hidden border-b border-[#1a1716]/10">
+          {thumbnail ? (
+            <img
+              src={thumbnail}
+              alt={product.name}
+              className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop&q=60';
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-[#1a1716]/30">
+              <ImageIcon className="w-8 h-8" />
+            </div>
+          )}
 
-        {/* Badges Overlay */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/95 text-slate-800 shadow-xs backdrop-blur-xs uppercase tracking-wider">
-            {isElectrical ? (
-              <Zap className="w-3 h-3 text-amber-500" />
-            ) : (
-              <HardHat className="w-3 h-3 text-orange-500" />
+          {/* Category Badge */}
+          <div className="absolute top-2 left-2 flex flex-col gap-1 items-start font-mono">
+            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 bg-white/95 text-[#1a1716] border border-[#1a1716]/15 uppercase tracking-wider backdrop-blur-xs">
+              {isElectrical ? <Zap className="w-2.5 h-2.5 text-[#2e4a3d]" /> : <HardHat className="w-2.5 h-2.5 text-[#2e4a3d]" />}
+              {product.category}
+            </span>
+          </div>
+
+          {/* Quick Special Badges */}
+          <div className="absolute top-2 right-2 flex flex-col gap-1 items-end font-mono">
+            {product.is_best_seller && (
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 bg-[#2e4a3d] text-white uppercase tracking-wider">
+                <Sparkles className="w-2.5 h-2.5" /> Best Seller
+              </span>
             )}
-            {product.brand}
-          </span>
-          {product.is_best_seller && (
-            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500 text-slate-950 shadow-xs">
-              <Sparkles className="w-2.5 h-2.5" /> Best Seller
-            </span>
-          )}
-          {product.is_emergency && (
-            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-600 text-white shadow-xs">
-              <Flame className="w-2.5 h-2.5" /> 30m Emergency
-            </span>
-          )}
+            {product.is_emergency && (
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 bg-rose-700 text-white uppercase tracking-wider">
+                <Flame className="w-2.5 h-2.5" /> 30m Express
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Quick Edit Overlay Button */}
-        <button
-          type="button"
-          onClick={() => onEdit(product.id)}
-          className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-white/90 text-slate-700 hover:text-amber-600 hover:bg-white shadow-xs transition"
-          title="Edit Product"
-        >
-          <Edit3 className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Card Content */}
-      <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-        <div>
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="capitalize">{product.category} {product.subcategory ? `• ${product.subcategory}` : ''}</span>
-            {product.unit && <span>{product.unit}</span>}
+        {/* Content Body */}
+        <div className="p-4 space-y-2.5">
+          <div className="flex items-center justify-between font-mono text-[10px] text-[#1a1716]/60">
+            <span className="font-bold uppercase text-[#1a1716]/80">{product.brand}</span>
+            <span>{product.subcategory || ''}</span>
           </div>
 
           <h3
             onClick={() => onEdit(product.id)}
-            className="font-bold text-slate-900 hover:text-amber-600 text-sm leading-snug line-clamp-2 cursor-pointer transition"
+            className="font-semibold text-sm text-[#1a1716] hover:text-[#2e4a3d] transition line-clamp-2 cursor-pointer leading-snug"
             title={product.name}
           >
             {product.name}
@@ -148,23 +136,23 @@ export function ProductCard({
 
           {/* Color variants preview */}
           {product.colors && product.colors.length > 0 && (
-            <div className="flex items-center gap-1.5 pt-1.5">
+            <div className="flex items-center gap-1.5 pt-1 font-mono">
               <div className="flex items-center -space-x-1">
                 {product.colors.slice(0, 5).map((c) => {
                   const info = getColorInfo(c);
                   return (
                     <span
                       key={c}
-                      className={`w-3 h-3 rounded-full inline-block ring-1 ring-white shadow-2xs ${
-                        info.isLight ? 'border border-slate-300' : ''
+                      className={`w-2.5 h-2.5 rounded-full inline-block ring-1 ring-white ${
+                        info.isLight ? 'border border-[#1a1716]/20' : ''
                       }`}
                       style={{ backgroundColor: info.hex }}
-                      title={`Color: ${c}`}
+                      title={`Variant: ${c}`}
                     />
                   );
                 })}
               </div>
-              <span className="text-[10px] text-slate-500 font-medium">
+              <span className="text-[10px] text-[#1a1716]/60">
                 {product.colors.length} {product.colors.length === 1 ? 'color' : 'colors'}
               </span>
             </div>
@@ -172,78 +160,77 @@ export function ProductCard({
         </div>
 
         {/* Pricing & Stock Grid */}
-        <div className="pt-2 border-t border-slate-100 flex items-end justify-between gap-2">
+        <div className="px-4 py-3 bg-[#f2efeb]/50 border-t border-[#1a1716]/8 flex items-center justify-between font-mono">
           <div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-base font-extrabold text-slate-900">
-                ₹{product.price.toLocaleString('en-IN')}
-              </span>
-              {product.mrp && product.mrp > product.price && (
-                <span className="text-xs text-slate-400 line-through">
-                  ₹{product.mrp.toLocaleString('en-IN')}
-                </span>
-              )}
+            <div className="text-base font-bold text-[#1a1716]">
+              ₹{product.price.toLocaleString('en-IN')}
             </div>
             {product.mrp && product.mrp > product.price && (
-              <div className="text-[10px] font-bold text-emerald-600">
-                {Math.round(((product.mrp - product.price) / product.mrp) * 100)}% DISCOUNT
+              <div className="text-[10px] text-[#1a1716]/50 flex items-center gap-1">
+                <span className="line-through">₹{product.mrp.toLocaleString('en-IN')}</span>
+                <span className="font-bold text-[#2e4a3d]">
+                  {Math.round(((product.mrp - product.price) / product.mrp) * 100)}% off
+                </span>
               </div>
             )}
           </div>
 
           <div className="text-right">
-            <div className="text-xs font-semibold text-slate-800">
-              {product.stock_quantity} in stock
+            <div className="text-xs font-bold text-[#1a1716]">
+              {product.stock_quantity} <span className="font-normal text-[10px] text-[#1a1716]/60">{product.unit || 'units'}</span>
             </div>
-            {isLowStock && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-rose-600">
-                <AlertCircle className="w-2.5 h-2.5" /> Low
+            {isLowStock ? (
+              <span className="text-[9px] font-bold text-rose-700 flex items-center gap-0.5 justify-end uppercase">
+                <AlertCircle className="w-2.5 h-2.5" /> Low Stock
               </span>
+            ) : (
+              <span className="text-[9px] text-[#2e4a3d] font-bold uppercase">In Stock</span>
             )}
           </div>
         </div>
+      </div>
 
-        {/* Card Footer Actions */}
-        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleToggleInStock}
-              disabled={isUpdatingStock}
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                product.in_stock ? 'bg-emerald-500' : 'bg-slate-300'
+      {/* Card Action Footer */}
+      <div className="p-3 bg-white border-t border-[#1a1716]/10 flex items-center justify-between font-mono text-[10px]">
+        {/* In-Stock status & Toggle */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleToggleInStock}
+            disabled={isUpdatingStock}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors duration-200 ease-in-out ${
+              product.in_stock ? 'bg-[#00c067]' : 'bg-[#cfd4dc]'
+            } ${isUpdatingStock ? 'opacity-60 cursor-wait' : ''}`}
+            title="Toggle storefront visibility"
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.22)] transition duration-200 ease-in-out ${
+                product.in_stock ? 'translate-x-4' : 'translate-x-0'
               }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out flex items-center justify-center ${
-                  product.in_stock ? 'translate-x-4' : 'translate-x-0'
-                }`}
-              >
-                {isUpdatingStock && <Loader2 className="w-2.5 h-2.5 animate-spin text-slate-600" />}
-              </span>
-            </button>
-            <span className="text-xs font-medium text-slate-600">
-              {product.in_stock ? 'Live' : 'Hidden'}
-            </span>
-          </div>
+            />
+          </button>
+          <span className={`uppercase font-bold text-[10px] ${product.in_stock ? 'text-[#009e53]' : 'text-[#1a1716]/60'}`}>
+            {product.in_stock ? 'Live' : 'Hidden'}
+          </span>
+        </div>
 
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onEdit(product.id)}
-              className="px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => onDeleteRequest(product)}
-              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-              title="Delete"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
+        {/* Buttons */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onEdit(product.id)}
+            className="px-2.5 py-1 bg-white hover:bg-[#f2efeb] text-[#1a1716] border border-[#1a1716]/15 uppercase tracking-wider font-semibold transition cursor-pointer"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => onDeleteRequest(product)}
+            className="p-1 text-[#1a1716]/40 hover:text-rose-700 transition cursor-pointer"
+            title="Delete product"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </div>

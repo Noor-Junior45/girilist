@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
-  Store, 
-  Lock, 
-  Mail, 
   Eye, 
   EyeOff, 
-  ShieldCheck, 
   AlertCircle, 
   Loader2, 
   ArrowRight,
-  Sparkles
+  ShieldCheck
 } from 'lucide-react';
 
 interface LoginViewProps {
@@ -30,7 +26,7 @@ export function LoginView({ onSuccess }: LoginViewProps) {
     setErrorMessage(null);
 
     if (!email.trim() || !password) {
-      setErrorMessage('Please enter both your work email and password.');
+      setErrorMessage('Please enter both your email address and password.');
       return;
     }
 
@@ -41,136 +37,180 @@ export function LoginView({ onSuccess }: LoginViewProps) {
     if (result.success) {
       onSuccess();
     } else {
-      setErrorMessage(result.error || 'Authentication failed. Please verify your credentials.');
+      setErrorMessage(result.error || 'Authorization failed. Please verify your credentials or permissions.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Subtle Background Elements */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-amber-500/10 via-transparent to-transparent pointer-events-none blur-3xl"></div>
+    <div className="min-h-screen bg-[#f2efeb] text-[#1a1716] flex items-center justify-center p-4 sm:p-6 lg:p-12 relative overflow-hidden font-sans">
+      {/* Decorative architectural diagonal hatch in background corners */}
+      <div 
+        className="absolute top-0 right-0 w-[45vw] h-[45vw] max-w-[600px] max-h-[600px] bg-hatch-corner pointer-events-none z-0" 
+        aria-hidden="true" 
+      />
+      <div 
+        className="absolute bottom-0 left-0 w-[35vw] h-[35vw] max-w-[450px] max-h-[450px] bg-hatch-corner pointer-events-none z-0" 
+        aria-hidden="true" 
+      />
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        {/* Brand Header */}
-        <div className="flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center shadow-xl shadow-amber-500/20 mb-4 ring-4 ring-amber-500/20">
-            <Store className="w-7 h-7 text-slate-950 font-bold" />
+      {/* Main Outer Card Container */}
+      <div className="w-full max-w-[1300px] min-h-[680px] grid grid-cols-1 lg:grid-cols-12 bg-white shadow-[0_30px_90px_rgba(26,23,22,0.09)] border border-[#1a1716]/5 relative z-10 overflow-hidden">
+        
+        {/* Left Visual Panel (Editorial Forest Green) */}
+        <div className="lg:col-span-6 bg-[#2e4a3d] p-8 sm:p-12 lg:p-16 text-white flex flex-col justify-between relative overflow-hidden">
+          {/* Subtle accent hatch background */}
+          <div className="absolute inset-0 bg-hatch-accent pointer-events-none" />
+
+          {/* Watermark "G" */}
+          <div 
+            className="absolute -bottom-16 -right-8 font-display text-[26rem] lg:text-[34rem] leading-none opacity-5 text-white pointer-events-none select-none italic font-semibold"
+            aria-hidden="true"
+          >
+            G
           </div>
 
-          <h1 className="text-2xl font-black text-white tracking-tight sm:text-3xl">
-            Giriraj <span className="text-amber-400">Product Manager</span>
-          </h1>
-          <p className="mt-1.5 text-xs text-slate-400 max-w-xs font-medium">
-            Internal Staff Admin Portal • Giriraj Electricals & Construction
-          </p>
+          <div className="relative z-10 space-y-6">
+            <div className="inline-flex items-center gap-2 font-mono text-[0.65rem] tracking-wider uppercase border border-white/30 px-3 py-1.5 backdrop-blur-xs text-white/90">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              System: Secure Connection Established
+            </div>
+
+            <div>
+              <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-white/60 block mb-2">
+                Node Index 01 / Admin Portal
+              </span>
+              <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-semibold italic leading-[0.95] text-white tracking-tight">
+                Giriraj Product Manager
+              </h1>
+            </div>
+
+            <p className="text-sm sm:text-base text-white/85 font-light leading-relaxed max-w-md pt-2">
+              Enterprise inventory control and catalog management for electrical and construction infrastructure specialists.
+            </p>
+          </div>
+
+          {/* Bottom Visual Panel Meta */}
+          <div className="relative z-10 pt-12 lg:pt-0">
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.15em] text-white/60">
+              Giriraj Electricals & Construction &copy; 2024
+            </div>
+          </div>
         </div>
 
-        {/* Login Card */}
-        <div className="mt-8 bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-md">
-          <div className="flex items-center gap-2 pb-4 mb-5 border-b border-slate-800 text-xs font-medium text-slate-300">
-            <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>Authorized Staff & Admin Login Only</span>
-          </div>
+        {/* Right Content Panel (Clean Editorial White Form) */}
+        <div className="lg:col-span-6 p-8 sm:p-12 lg:p-16 flex flex-col justify-between bg-white relative">
+          <div className="max-w-[420px] w-full mx-auto my-auto py-4">
+            <header className="mb-8">
+              <span className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[#1a1716]/50 block mb-1">
+                Authorization Gateway
+              </span>
+              <h2 className="font-display text-3xl sm:text-4xl font-semibold italic text-[#1a1716]">
+                Staff Access
+              </h2>
+            </header>
 
-          {/* Error Message Alert */}
-          {errorMessage && (
-            <div
-              id="login-error-box"
-              className="mb-5 p-4 rounded-xl bg-rose-950/50 border border-rose-800/80 text-rose-200 text-xs flex items-start gap-3 animate-in fade-in duration-200"
-            >
-              <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-              <div>
-                <div className="font-semibold text-rose-100">Access Denied</div>
-                <div className="mt-0.5 opacity-90">{errorMessage}</div>
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Field */}
-            <div>
-              <label
-                htmlFor="input-login-email"
-                className="block text-xs font-semibold text-slate-300 mb-1.5"
+            {/* Error Message */}
+            {errorMessage && (
+              <div 
+                id="login-error-box"
+                className="mb-6 p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono flex items-start gap-2.5 animate-in fade-in duration-200"
               >
-                Work Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Mail className="w-4 h-4" />
-                </div>
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="leading-snug">{errorMessage}</div>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Email Input */}
+              <div className="space-y-1.5">
+                <label 
+                  htmlFor="input-login-email"
+                  className="block font-mono text-[0.65rem] uppercase tracking-[0.12em] text-[#1a1716]/80 font-medium"
+                >
+                  Email ID
+                </label>
                 <input
                   id="input-login-email"
                   type="email"
-                  autoComplete="email"
                   required
                   placeholder="admin@giriraj.in"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-800/90 border border-slate-700 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                  className="w-full py-2.5 px-0 bg-transparent border-0 border-b border-[#1a1716]/20 text-[#1a1716] text-sm sm:text-base placeholder:text-[#1a1716]/30 focus:outline-none focus:border-[#2e4a3d] focus:ring-0 transition-colors"
                 />
               </div>
-            </div>
 
-            {/* Password Field */}
-            <div>
-              <label
-                htmlFor="input-login-password"
-                className="block text-xs font-semibold text-slate-300 mb-1.5"
-              >
-                Staff Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Lock className="w-4 h-4" />
+              {/* Password Input */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label 
+                    htmlFor="input-login-password"
+                    className="block font-mono text-[0.65rem] uppercase tracking-[0.12em] text-[#1a1716]/80 font-medium"
+                  >
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-[0.65rem] font-mono text-[#1a1716]/50 hover:text-[#2e4a3d] transition-colors"
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
                 </div>
-                <input
-                  id="input-login-password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-11 py-2.5 bg-slate-800/90 border border-slate-700 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
-                />
-                <button
-                  type="button"
-                  id="btn-toggle-password"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                <div className="relative">
+                  <input
+                    id="input-login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="••••••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full py-2.5 px-0 bg-transparent border-0 border-b border-[#1a1716]/20 text-[#1a1716] text-sm sm:text-base placeholder:text-[#1a1716]/30 focus:outline-none focus:border-[#2e4a3d] focus:ring-0 transition-colors pr-8"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-[#1a1716]/40 hover:text-[#1a1716] p-1"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                id="btn-submit-login"
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full mt-2 py-4 px-6 bg-[#1a1716] hover:bg-[#2e4a3d] active:bg-[#233a30] text-white font-mono text-[0.75rem] uppercase tracking-[0.2em] font-semibold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer shadow-sm hover:shadow-md"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Authorizing Session...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Authorize Session</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Sync Note Box */}
+            <div className="mt-8 p-4 bg-[#f2efeb] border border-[#1a1716]/8 font-mono text-[0.65rem] leading-relaxed text-[#1a1716]/80">
+              <div className="font-semibold text-[#1a1716] mb-0.5">
+                DIRECT_DATA_SYNC: <span className="text-[#2e4a3d] font-bold">iffdkhzctkbglmvaayeh</span>
+              </div>
+              <div>
+                Live updates are broadcasted immediately to the public storefront upon modification.
               </div>
             </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              id="btn-submit-login"
-              disabled={isSubmitting}
-              className="w-full mt-2 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                  Verifying Admin Credentials...
-                </>
-              ) : (
-                <>
-                  <span>Sign In to Catalog Manager</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Integration Footnote */}
-          <div className="mt-6 pt-4 border-t border-slate-800/80 text-[11px] text-slate-400 text-center leading-relaxed">
-            Direct sync with Supabase project <code className="text-amber-400 font-mono">iffdkhzctkbglmvaayeh</code>. Changes reflect immediately on the storefront app.
           </div>
         </div>
+
       </div>
     </div>
   );

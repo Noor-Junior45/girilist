@@ -8,7 +8,6 @@ import { useToast } from '../context/ToastContext';
 import { 
   Plus, 
   Search, 
-  Filter, 
   LayoutList, 
   LayoutGrid, 
   RefreshCw, 
@@ -18,8 +17,6 @@ import {
   Boxes, 
   Sparkles, 
   Flame, 
-  CheckCircle2, 
-  ArrowUpDown,
   Loader2,
   PackageX
 } from 'lucide-react';
@@ -57,7 +54,6 @@ export function ProductListView({
     setIsLoading(true);
     setError(null);
     try {
-      // Order by updated_at descending, fallback to created_at
       const { data, error: fetchErr } = await supabase
         .from('products')
         .select('*')
@@ -86,7 +82,6 @@ export function ProductListView({
     fetchProducts();
   }, []);
 
-  // Update in-stock state locally on toggle
   const handleStockStatusChange = (productId: string, newInStock: boolean) => {
     setProducts((prev) =>
       prev.map((p) =>
@@ -97,7 +92,6 @@ export function ProductListView({
     );
   };
 
-  // Remove deleted product from state
   const handleProductDeleted = (productId: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== productId));
   };
@@ -111,21 +105,15 @@ export function ProductListView({
   const filteredProducts = useMemo(() => {
     return products
       .filter((product) => {
-        // Category filter
         if (categoryFilter !== 'all' && product.category !== categoryFilter) {
           return false;
         }
-
-        // Stock filter
         if (stockFilter === 'in_stock' && !product.in_stock) return false;
         if (stockFilter === 'out_of_stock' && product.in_stock) return false;
         if (stockFilter === 'low_stock' && product.stock_quantity >= 10) return false;
-
-        // Special tag filter
         if (specialFilter === 'emergency' && !product.is_emergency) return false;
         if (specialFilter === 'bestseller' && !product.is_best_seller) return false;
 
-        // Search query filter (matches name, brand, subcategory, tags, or colors)
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();
           const matchName = product.name?.toLowerCase().includes(q);
@@ -160,7 +148,7 @@ export function ProductListView({
       });
   }, [products, categoryFilter, stockFilter, specialFilter, searchQuery, sortBy]);
 
-  // Catalog Summary Metrics
+  // Summary Metrics
   const metrics = useMemo(() => {
     const total = products.length;
     const electricalCount = products.filter((p) => p.category === 'electrical').length;
@@ -180,99 +168,101 @@ export function ProductListView({
   }, [products]);
 
   return (
-    <div className="space-y-6 pb-16">
-      {/* Top Banner & Action Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="space-y-6 pb-16 font-sans">
+      {/* Top Banner & Header */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-[#1a1716]/10 pb-5">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Boxes className="w-7 h-7 text-amber-500" />
-            Product Catalog & Inventory
+          <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-[#1a1716]/50 block mb-1">
+            System Inventory Directory
+          </span>
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold italic text-[#1a1716] tracking-tight">
+            Product Portfolio & Inventory
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Manage live products, pricing, stock levels, specifications, and FAQs directly on Supabase.
+          <p className="text-xs sm:text-sm text-[#1a1716]/70 mt-1 max-w-xl font-light">
+            Live catalog control for electrical and construction assets. Direct real-time sync with Supabase project <code className="font-mono text-[#2e4a3d] font-semibold">iffdkhzctkbglmvaayeh</code>.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
             type="button"
             id="btn-refresh-products"
             onClick={fetchProducts}
             disabled={isLoading}
-            className="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:text-slate-900 shadow-2xs transition"
-            title="Refresh product list from database"
+            className="p-3 bg-white border border-[#1a1716]/15 hover:border-[#1a1716]/30 text-[#1a1716] transition cursor-pointer shadow-2xs"
+            title="Refresh database records"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-amber-600' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-[#2e4a3d]' : ''}`} />
           </button>
 
           <button
             type="button"
             id="btn-add-new-product"
             onClick={onAddProduct}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 text-sm font-bold rounded-xl shadow-sm transition hover:shadow"
+            className="inline-flex items-center gap-2 px-5 py-3 bg-[#1a1716] hover:bg-[#2e4a3d] active:bg-[#233a30] text-white text-xs font-mono uppercase tracking-widest font-semibold transition cursor-pointer shadow-sm"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            + Add New Product
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            Add Product
           </button>
         </div>
       </div>
 
-      {/* Metrics Highlights Bar */}
+      {/* Architectural Metrics Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-500">Total Catalog Items</div>
-          <div className="text-2xl font-extrabold text-slate-900 mt-1">{metrics.total}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
-            {metrics.electricalCount} Electrical • {metrics.constructionCount} Construction
+        <div className="bg-white p-4 border border-[#1a1716]/10 shadow-2xs">
+          <div className="font-mono text-[0.65rem] uppercase tracking-wider text-[#1a1716]/60">Total Catalog</div>
+          <div className="font-display text-3xl font-semibold italic text-[#1a1716] mt-0.5">{metrics.total}</div>
+          <div className="font-mono text-[10px] text-[#1a1716]/50 mt-1">
+            {metrics.electricalCount} ELEC • {metrics.constructionCount} CONST
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-500">Active In Store</div>
-          <div className="text-2xl font-extrabold text-emerald-600 mt-1">{metrics.inStockCount}</div>
-          <div className="text-[11px] text-emerald-700 font-medium mt-0.5">
+        <div className="bg-white p-4 border border-[#1a1716]/10 shadow-2xs">
+          <div className="font-mono text-[0.65rem] uppercase tracking-wider text-[#1a1716]/60">Active in Store</div>
+          <div className="font-display text-3xl font-semibold italic text-[#2e4a3d] mt-0.5">{metrics.inStockCount}</div>
+          <div className="font-mono text-[10px] text-[#2e4a3d] font-medium mt-1">
             {metrics.total > 0 ? `${Math.round((metrics.inStockCount / metrics.total) * 100)}% available` : '0%'}
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-500">Low Stock Alert (&lt;10)</div>
-          <div className={`text-2xl font-extrabold mt-1 ${metrics.lowStockCount > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+        <div className="bg-white p-4 border border-[#1a1716]/10 shadow-2xs">
+          <div className="font-mono text-[0.65rem] uppercase tracking-wider text-[#1a1716]/60">Low Stock (&lt;10)</div>
+          <div className={`font-display text-3xl font-semibold italic mt-0.5 ${metrics.lowStockCount > 0 ? 'text-rose-700' : 'text-[#1a1716]'}`}>
             {metrics.lowStockCount}
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
-            {metrics.lowStockCount > 0 ? 'Requires restocking' : 'Stock levels healthy'}
+          <div className="font-mono text-[10px] text-[#1a1716]/50 mt-1">
+            {metrics.lowStockCount > 0 ? 'Replenishment needed' : 'Stock optimal'}
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-          <div className="text-xs font-semibold text-slate-500">Electrical Goods</div>
-          <div className="text-2xl font-extrabold text-amber-600 mt-1">{metrics.electricalCount}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Wires, switches, conduits</div>
+        <div className="bg-white p-4 border border-[#1a1716]/10 shadow-2xs">
+          <div className="font-mono text-[0.65rem] uppercase tracking-wider text-[#1a1716]/60">Electrical Lines</div>
+          <div className="font-display text-3xl font-semibold italic text-[#1a1716] mt-0.5">{metrics.electricalCount}</div>
+          <div className="font-mono text-[10px] text-[#1a1716]/50 mt-1">Wires, switches, conduits</div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs col-span-2 sm:col-span-1">
-          <div className="text-xs font-semibold text-slate-500">Estimated Inventory Value</div>
-          <div className="text-2xl font-extrabold text-slate-900 mt-1">
+        <div className="bg-white p-4 border border-[#1a1716]/10 shadow-2xs col-span-2 sm:col-span-1">
+          <div className="font-mono text-[0.65rem] uppercase tracking-wider text-[#1a1716]/60">Inventory Valuation</div>
+          <div className="font-display text-3xl font-semibold italic text-[#1a1716] mt-0.5">
             ₹{(metrics.totalStockValue / 100000).toFixed(2)}L
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Total stock at selling price</div>
+          <div className="font-mono text-[10px] text-[#1a1716]/50 mt-1">At active selling MRP/rates</div>
         </div>
       </div>
 
-      {/* Search, Category Tabs & Filter Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      {/* Filter & Toolbar Box */}
+      <div className="bg-white p-5 border border-[#1a1716]/10 shadow-2xs space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Category Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl border border-slate-200/60 overflow-x-auto text-xs font-semibold">
+          <div className="flex items-center gap-1 p-1 bg-[#f2efeb] border border-[#1a1716]/8 overflow-x-auto font-mono text-[11px]">
             <button
               id="tab-category-all"
               type="button"
               onClick={() => setCategoryFilter('all')}
-              className={`px-3.5 py-1.5 rounded-lg transition whitespace-nowrap ${
+              className={`px-3.5 py-1.5 uppercase tracking-wider transition whitespace-nowrap cursor-pointer ${
                 categoryFilter === 'all'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-[#1a1716] font-bold shadow-2xs border border-[#1a1716]/10'
+                  : 'text-[#1a1716]/70 hover:text-[#1a1716]'
               }`}
             >
               All Categories ({products.length})
@@ -281,39 +271,39 @@ export function ProductListView({
               id="tab-category-electrical"
               type="button"
               onClick={() => setCategoryFilter('electrical')}
-              className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-3.5 py-1.5 uppercase tracking-wider transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 categoryFilter === 'electrical'
-                  ? 'bg-white text-amber-700 shadow-xs'
-                  : 'text-slate-600 hover:text-amber-700'
+                  ? 'bg-white text-[#2e4a3d] font-bold shadow-2xs border border-[#1a1716]/10'
+                  : 'text-[#1a1716]/70 hover:text-[#2e4a3d]'
               }`}
             >
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <Zap className="w-3.5 h-3.5 text-[#2e4a3d]" />
               Electrical ({metrics.electricalCount})
             </button>
             <button
               id="tab-category-construction"
               type="button"
               onClick={() => setCategoryFilter('construction')}
-              className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-3.5 py-1.5 uppercase tracking-wider transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 categoryFilter === 'construction'
-                  ? 'bg-white text-orange-700 shadow-xs'
-                  : 'text-slate-600 hover:text-orange-700'
+                  ? 'bg-white text-[#2e4a3d] font-bold shadow-2xs border border-[#1a1716]/10'
+                  : 'text-[#1a1716]/70 hover:text-[#2e4a3d]'
               }`}
             >
-              <HardHat className="w-3.5 h-3.5 text-orange-500" />
+              <HardHat className="w-3.5 h-3.5 text-[#2e4a3d]" />
               Construction ({metrics.constructionCount})
             </button>
           </div>
 
           {/* View Toggle & Sorting */}
-          <div className="flex items-center gap-2 self-end lg:self-auto">
+          <div className="flex items-center gap-2 self-end lg:self-auto font-mono">
             {/* Sort Dropdown */}
             <div className="relative">
               <select
                 id="select-sort-by"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="text-[11px] uppercase tracking-wider font-mono bg-white border border-[#1a1716]/15 px-3 py-2 text-[#1a1716] focus:outline-none focus:border-[#2e4a3d] cursor-pointer"
               >
                 <option value="updated_desc">Recently Updated First</option>
                 <option value="name_asc">Name (A-Z)</option>
@@ -323,14 +313,14 @@ export function ProductListView({
               </select>
             </div>
 
-            {/* View Mode Toggle (Table / Grid) */}
-            <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200">
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-[#f2efeb] p-0.5 border border-[#1a1716]/10">
               <button
                 type="button"
                 id="btn-view-table"
                 onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded-lg transition ${
-                  viewMode === 'table' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                className={`p-1.5 transition cursor-pointer ${
+                  viewMode === 'table' ? 'bg-white text-[#1a1716] shadow-2xs' : 'text-[#1a1716]/50 hover:text-[#1a1716]'
                 }`}
                 title="Table View"
               >
@@ -340,8 +330,8 @@ export function ProductListView({
                 type="button"
                 id="btn-view-grid"
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-lg transition ${
-                  viewMode === 'grid' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                className={`p-1.5 transition cursor-pointer ${
+                  viewMode === 'grid' ? 'bg-white text-[#1a1716] shadow-2xs' : 'text-[#1a1716]/50 hover:text-[#1a1716]'
                 }`}
                 title="Grid View"
               >
@@ -352,24 +342,23 @@ export function ProductListView({
         </div>
 
         {/* Search Bar & Sub-Filters Row */}
-        <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-slate-100">
-          {/* Search Input */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-[#1a1716]/10">
           <div className="relative flex-1 w-full">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#1a1716]/40">
               <Search className="w-4 h-4" />
             </div>
             <input
               id="input-search-products"
               type="text"
-              placeholder="Search by product name, brand (Havells, Polycab, Tata), subcategory, or tags..."
+              placeholder="Search product name, brand (Havells, Polycab), tags, or variants..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition"
+              className="w-full pl-10 pr-4 py-2 text-xs bg-[#f2efeb]/60 border border-[#1a1716]/15 text-[#1a1716] placeholder:text-[#1a1716]/40 focus:outline-none focus:border-[#2e4a3d] focus:bg-white transition"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-slate-400 hover:text-slate-600"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-[10px] font-mono uppercase text-[#1a1716]/50 hover:text-[#1a1716]"
               >
                 Clear
               </button>
@@ -377,78 +366,78 @@ export function ProductListView({
           </div>
 
           {/* Quick Filter Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto text-xs pb-1 sm:pb-0">
+          <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto font-mono text-[10px] uppercase tracking-wider pb-1 sm:pb-0">
             <button
               id="filter-chip-low-stock"
               onClick={() => setStockFilter(stockFilter === 'low_stock' ? 'all' : 'low_stock')}
-              className={`px-2.5 py-1.5 rounded-lg font-medium transition flex items-center gap-1 shrink-0 ${
+              className={`px-3 py-1.5 transition flex items-center gap-1.5 shrink-0 cursor-pointer border ${
                 stockFilter === 'low_stock'
-                  ? 'bg-rose-100 text-rose-800 border border-rose-300 font-semibold'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-rose-50 text-rose-800 border-rose-300 font-bold'
+                  : 'bg-white text-[#1a1716]/70 border-[#1a1716]/15 hover:bg-[#f2efeb]'
               }`}
             >
-              <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+              <AlertCircle className="w-3 h-3 text-rose-600" />
               Low Stock (&lt;10)
             </button>
 
             <button
               id="filter-chip-emergency"
               onClick={() => setSpecialFilter(specialFilter === 'emergency' ? 'all' : 'emergency')}
-              className={`px-2.5 py-1.5 rounded-lg font-medium transition flex items-center gap-1 shrink-0 ${
+              className={`px-3 py-1.5 transition flex items-center gap-1.5 shrink-0 cursor-pointer border ${
                 specialFilter === 'emergency'
-                  ? 'bg-rose-100 text-rose-800 border border-rose-300 font-semibold'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-amber-50 text-amber-900 border-amber-300 font-bold'
+                  : 'bg-white text-[#1a1716]/70 border-[#1a1716]/15 hover:bg-[#f2efeb]'
               }`}
             >
-              <Flame className="w-3.5 h-3.5 text-rose-600" />
+              <Flame className="w-3 h-3 text-amber-600" />
               30m Emergency
             </button>
 
             <button
               id="filter-chip-bestseller"
               onClick={() => setSpecialFilter(specialFilter === 'bestseller' ? 'all' : 'bestseller')}
-              className={`px-2.5 py-1.5 rounded-lg font-medium transition flex items-center gap-1 shrink-0 ${
+              className={`px-3 py-1.5 transition flex items-center gap-1.5 shrink-0 cursor-pointer border ${
                 specialFilter === 'bestseller'
-                  ? 'bg-amber-100 text-amber-900 border border-amber-300 font-semibold'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-[#2e4a3d]/10 text-[#2e4a3d] border-[#2e4a3d]/30 font-bold'
+                  : 'bg-white text-[#1a1716]/70 border-[#1a1716]/15 hover:bg-[#f2efeb]'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <Sparkles className="w-3 h-3 text-[#2e4a3d]" />
               Best Sellers
             </button>
           </div>
         </div>
       </div>
 
-      {/* Main Content Area: Loading / Error / Empty / Table / Grid */}
+      {/* Main Content Area */}
       {isLoading ? (
-        <div className="p-16 text-center bg-white rounded-3xl border border-slate-200 flex flex-col items-center justify-center gap-3">
-          <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-          <div className="font-semibold text-slate-800 text-sm">Loading Catalog from Supabase...</div>
-          <div className="text-xs text-slate-400">Fetching products, specifications, and live stock levels.</div>
+        <div className="p-16 text-center bg-white border border-[#1a1716]/10 flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-8 h-8 text-[#2e4a3d] animate-spin" />
+          <div className="font-mono text-xs uppercase tracking-widest text-[#1a1716]">Loading Catalog from Supabase...</div>
+          <div className="font-mono text-[10px] text-[#1a1716]/50">Syncing live inventory records</div>
         </div>
       ) : error ? (
-        <div className="p-8 text-center bg-rose-50 border border-rose-200 rounded-3xl space-y-3">
-          <AlertCircle className="w-8 h-8 text-rose-600 mx-auto" />
-          <div className="text-sm font-bold text-rose-900">Database Connection Notice</div>
-          <p className="text-xs text-rose-700 max-w-md mx-auto">{error}</p>
+        <div className="p-8 text-center bg-rose-50 border border-rose-200 space-y-3 font-mono">
+          <AlertCircle className="w-7 h-7 text-rose-600 mx-auto" />
+          <div className="text-xs font-bold uppercase tracking-wider text-rose-900">Database Connection Notice</div>
+          <p className="text-[11px] text-rose-700 max-w-md mx-auto">{error}</p>
           <button
             onClick={fetchProducts}
-            className="px-4 py-2 bg-rose-600 text-white text-xs font-semibold rounded-xl hover:bg-rose-700 transition"
+            className="px-4 py-2 bg-rose-700 text-white text-[10px] uppercase tracking-wider font-semibold hover:bg-rose-800 transition cursor-pointer"
           >
             Retry Connection
           </button>
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="p-16 text-center bg-white rounded-3xl border border-slate-200 flex flex-col items-center justify-center gap-3">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
-            <PackageX className="w-7 h-7" />
+        <div className="p-16 text-center bg-white border border-[#1a1716]/10 flex flex-col items-center justify-center gap-3">
+          <div className="w-12 h-12 bg-[#f2efeb] text-[#1a1716]/40 flex items-center justify-center">
+            <PackageX className="w-6 h-6" />
           </div>
-          <div className="font-bold text-slate-800 text-base">No Products Found</div>
-          <p className="text-xs text-slate-500 max-w-sm">
+          <div className="font-display text-2xl font-semibold italic text-[#1a1716]">No Products Found</div>
+          <p className="text-xs text-[#1a1716]/60 max-w-sm font-light">
             {searchQuery || categoryFilter !== 'all' || stockFilter !== 'all'
-              ? 'No products matched your search or active filter criteria. Try clearing search filters.'
-              : 'Your Supabase products catalog is currently empty. Click "+ Add New Product" to create your first item.'}
+              ? 'No products match your active search or filter criteria.'
+              : 'Your Supabase catalog is currently empty. Click "+ Add Product" to create your first item.'}
           </p>
           {searchQuery || categoryFilter !== 'all' || stockFilter !== 'all' ? (
             <button
@@ -458,37 +447,37 @@ export function ProductListView({
                 setStockFilter('all');
                 setSpecialFilter('all');
               }}
-              className="mt-2 text-xs text-amber-600 hover:text-amber-700 font-semibold underline"
+              className="mt-2 text-xs font-mono uppercase tracking-wider text-[#2e4a3d] hover:underline font-semibold cursor-pointer"
             >
-              Reset All Filters
+              Reset Filters
             </button>
           ) : (
             <button
               onClick={onAddProduct}
-              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl hover:bg-amber-400 transition"
+              className="mt-2 inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#1a1716] text-white text-xs font-mono uppercase tracking-widest font-semibold hover:bg-[#2e4a3d] transition cursor-pointer"
             >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              Add Product Now
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              Add First Product
             </button>
           )}
         </div>
       ) : viewMode === 'table' ? (
         /* TABLE VIEW */
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+        <div className="bg-white border border-[#1a1716]/10 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <tr className="bg-[#f2efeb] border-b border-[#1a1716]/10 font-mono text-[10px] uppercase tracking-wider text-[#1a1716]/70">
                   <th className="py-3 pl-4 pr-3">Product / Brand</th>
                   <th className="py-3 px-3">Category</th>
                   <th className="py-3 px-3">Pricing (₹)</th>
-                  <th className="py-3 px-3">Stock Level</th>
-                  <th className="py-3 px-3">Live In Store</th>
-                  <th className="py-3 px-3">Last Updated</th>
+                  <th className="py-3 px-3">Stock</th>
+                  <th className="py-3 px-3">Storefront Status</th>
+                  <th className="py-3 px-3">Last Sync</th>
                   <th className="py-3 pl-3 pr-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#1a1716]/5">
                 {filteredProducts.map((product) => (
                   <ProductRow
                     key={product.id}
@@ -501,9 +490,9 @@ export function ProductListView({
               </tbody>
             </table>
           </div>
-          <div className="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center justify-between">
+          <div className="p-3.5 bg-[#f2efeb]/80 border-t border-[#1a1716]/10 font-mono text-[11px] text-[#1a1716]/70 flex items-center justify-between">
             <span>Showing {filteredProducts.length} of {products.length} catalog items</span>
-            <span className="text-[11px]">Instant updates synced to Supabase</span>
+            <span className="text-[10px]">Real-time Supabase sync enabled</span>
           </div>
         </div>
       ) : (
@@ -520,7 +509,7 @@ export function ProductListView({
               />
             ))}
           </div>
-          <div className="mt-4 text-center text-xs text-slate-500">
+          <div className="mt-4 text-center font-mono text-[11px] text-[#1a1716]/60">
             Showing {filteredProducts.length} of {products.length} products
           </div>
         </div>

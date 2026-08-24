@@ -12,10 +12,6 @@ import {
   Save, 
   Loader2, 
   AlertCircle, 
-  Zap, 
-  HardHat, 
-  Check, 
-  Layers, 
   Clock, 
   Sparkles, 
   Flame, 
@@ -83,69 +79,40 @@ export function ProductFormView({
           .eq('id', productId)
           .single();
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         if (data && mounted) {
           setName(data.name || '');
           setBrand(data.brand || '');
-          setCategory(data.category === 'construction' ? 'construction' : 'electrical');
+          setCategory(data.category || 'electrical');
           setSubcategory(data.subcategory || '');
           setUnit(data.unit || '');
-          setPrice(data.price !== undefined && data.price !== null ? String(data.price) : '');
+          setPrice(data.price !== undefined ? String(data.price) : '');
           setMrp(data.mrp !== undefined && data.mrp !== null ? String(data.mrp) : '');
-          setStockQuantity(data.stock_quantity !== undefined && data.stock_quantity !== null ? String(data.stock_quantity) : '0');
-          setDeliveryMinutes(data.delivery_minutes !== undefined && data.delivery_minutes !== null ? String(data.delivery_minutes) : '30');
+          setStockQuantity(data.stock_quantity !== undefined ? String(data.stock_quantity) : '50');
+          setDeliveryMinutes(data.delivery_minutes !== undefined ? String(data.delivery_minutes) : '30');
           setDescription(data.description || '');
-
           setInStock(data.in_stock ?? true);
           setIsEmergency(data.is_emergency ?? false);
           setIsBestSeller(data.is_best_seller ?? false);
 
           setImageUrls(Array.isArray(data.image_urls) ? data.image_urls : []);
+          setSpecifications(Array.isArray(data.specifications) ? data.specifications : []);
+          setFaqs(Array.isArray(data.faqs) ? data.faqs : []);
           setTags(Array.isArray(data.tags) ? data.tags : []);
           setColors(Array.isArray(data.colors) ? data.colors : []);
-
-          // Convert specifications jsonb object to key-value list
-          if (data.specifications && typeof data.specifications === 'object') {
-            const specList: SpecificationItem[] = Object.entries(data.specifications).map(
-              ([k, v]) => ({
-                id: Math.random().toString(36).substring(2, 9),
-                key: k,
-                value: String(v),
-              })
-            );
-            setSpecifications(specList);
-          } else {
-            setSpecifications([]);
-          }
-
-          // Convert faqs jsonb array to FaqItem array
-          if (Array.isArray(data.faqs)) {
-            const faqList: FaqItem[] = data.faqs.map((f: { q?: string; a?: string }) => ({
-              id: Math.random().toString(36).substring(2, 9),
-              q: f.q || '',
-              a: f.a || '',
-            }));
-            setFaqs(faqList);
-          } else {
-            setFaqs([]);
-          }
         }
       } catch (err: unknown) {
-        console.error('Error fetching product for edit:', err);
-        const msg = err instanceof Error ? err.message : 'Failed to load product details.';
+        console.error('Error fetching product for editing:', err);
+        const msg = err instanceof Error ? err.message : 'Could not fetch product from Supabase.';
         setFormError(msg);
         showToast({
           type: 'error',
-          title: 'Product Load Failed',
+          title: 'Load Failed',
           description: msg,
         });
       } finally {
-        if (mounted) {
-          setIsLoadingProduct(false);
-        }
+        if (mounted) setIsLoadingProduct(false);
       }
     }
 
@@ -154,13 +121,13 @@ export function ProductFormView({
     return () => {
       mounted = false;
     };
-  }, [productId, showToast]);
+  }, [productId]);
 
-  // Live discount % calculation preview
+  // Compute discount preview
   const numPrice = parseFloat(price) || 0;
   const numMrp = parseFloat(mrp) || 0;
   const discountPercentPreview =
-    numMrp > 0 && numPrice > 0 && numMrp > numPrice
+    numMrp > numPrice && numPrice > 0
       ? Math.round(((numMrp - numPrice) / numMrp) * 100)
       : null;
 
@@ -168,73 +135,57 @@ export function ProductFormView({
     e.preventDefault();
     setFormError(null);
 
-    // Validation
+    // Form Validations
     if (!name.trim()) {
       setFormError('Product Name is required.');
       return;
     }
+
     if (!brand.trim()) {
-      setFormError('Brand is required.');
-      return;
-    }
-    if (!category) {
-      setFormError('Category is required.');
-      return;
-    }
-    if (!price.trim() || isNaN(numPrice) || numPrice <= 0) {
-      setFormError('A valid Selling Price (greater than 0) is required.');
-      return;
-    }
-    if (imageUrls.length === 0) {
-      setFormError('At least 1 product image is required.');
+      setFormError('Brand Name is required.');
       return;
     }
 
-    // Convert specifications array back to JSON object
-    const specsObject: Record<string, string> = {};
-    for (const item of specifications) {
-      if (item.key.trim() && item.value.trim()) {
-        specsObject[item.key.trim()] = item.value.trim();
-      }
+    const parsedPrice = parseFloat(price);
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      setFormError('Valid positive selling price is required.');
+      return;
     }
 
-    // Convert FAQs array back to clean {q, a} list
-    const cleanFaqs = faqs
-      .filter((f) => f.q.trim() && f.a.trim())
-      .map((f) => ({ q: f.q.trim(), a: f.a.trim() }));
+    const parsedMrp = mrp.trim() ? parseFloat(mrp) : null;
+    if (parsedMrp !== null && (isNaN(parsedMrp) || parsedMrp < 0)) {
+      setFormError('MRP must be a valid positive number if provided.');
+      return;
+    }
 
-    // Clean tags
-    const cleanTags = tags.map((t) => t.trim().toLowerCase()).filter(Boolean);
-
-    // Clean colors
-    const cleanColors = colors.map((c) => c.trim()).filter(Boolean);
-
-    // Construct Payload — STRICTLY EXCLUDING `id` and `discount_percent`
-    const payload = {
-      name: name.trim(),
-      brand: brand.trim(),
-      category,
-      subcategory: subcategory.trim(),
-      price: numPrice,
-      mrp: numMrp > 0 ? numMrp : null,
-      unit: unit.trim() || '1 pc',
-      stock_quantity: parseInt(stockQuantity, 10) || 0,
-      in_stock: inStock,
-      image_urls: imageUrls,
-      delivery_minutes: parseInt(deliveryMinutes, 10) || 30,
-      description: description.trim(),
-      specifications: specsObject,
-      faqs: cleanFaqs,
-      tags: cleanTags,
-      colors: cleanColors,
-      is_emergency: isEmergency,
-      is_best_seller: isBestSeller,
-      updated_at: new Date().toISOString(),
-    };
+    const parsedStock = parseInt(stockQuantity, 10);
+    const parsedDelivery = parseInt(deliveryMinutes, 10);
 
     setIsSubmitting(true);
 
     try {
+      const payload: Partial<Product> = {
+        name: name.trim(),
+        brand: brand.trim(),
+        category,
+        subcategory: subcategory.trim() || undefined,
+        unit: unit.trim() || undefined,
+        price: parsedPrice,
+        mrp: parsedMrp !== null ? parsedMrp : undefined,
+        stock_quantity: !isNaN(parsedStock) ? parsedStock : 0,
+        delivery_minutes: !isNaN(parsedDelivery) ? parsedDelivery : 30,
+        description: description.trim() || undefined,
+        in_stock: inStock,
+        is_emergency: isEmergency,
+        is_best_seller: isBestSeller,
+        image_urls: imageUrls.filter((url) => Boolean(url && url.trim())),
+        specifications: specifications.filter((s) => s.key.trim() && s.value.trim()),
+        faqs: faqs.filter((f) => f.question.trim() && f.answer.trim()),
+        tags: tags.filter((t) => t.trim()),
+        colors: colors.filter((c) => c.trim()),
+        updated_at: new Date().toISOString(),
+      };
+
       if (isEditing && productId) {
         // UPDATE existing product
         const { error } = await supabase
@@ -249,7 +200,7 @@ export function ProductFormView({
         showToast({
           type: 'success',
           title: 'Product Updated',
-          description: `"${name}" changes have been saved to Supabase.`,
+          description: `"${name}" has been updated in the catalog.`,
         });
       } else {
         // INSERT new product
@@ -285,48 +236,46 @@ export function ProductFormView({
 
   if (isLoadingProduct) {
     return (
-      <div className="p-16 text-center bg-white rounded-3xl border border-slate-200 flex flex-col items-center justify-center gap-3">
-        <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <div className="font-semibold text-slate-800 text-sm">Loading Product Record...</div>
-        <div className="text-xs text-slate-400">Fetching specifications and stored images from Supabase.</div>
+      <div className="p-16 text-center bg-white border border-[#1a1716]/10 flex flex-col items-center justify-center gap-3 font-mono">
+        <Loader2 className="w-8 h-8 text-[#2e4a3d] animate-spin" />
+        <div className="text-xs uppercase tracking-widest text-[#1a1716]">Loading Product Record...</div>
+        <div className="text-[10px] text-[#1a1716]/50">Fetching specifications and stored assets</div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 pb-20" id="product-editor-form">
+    <form onSubmit={handleSubmit} className="space-y-6 pb-20 font-sans" id="product-editor-form">
       {/* Top Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-16 bg-slate-50/95 backdrop-blur-xs py-3 z-30 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-16 bg-[#f2efeb]/95 backdrop-blur-xs py-3 z-30 border-b border-[#1a1716]/10">
         <div className="flex items-center gap-3">
           <button
             type="button"
             id="btn-back-to-list"
             onClick={onCancel}
-            className="p-2 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:text-slate-900 shadow-2xs transition"
+            className="p-2.5 bg-white border border-[#1a1716]/15 hover:border-[#1a1716]/30 text-[#1a1716] shadow-2xs transition cursor-pointer"
             title="Back to Product List"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              {isEditing ? 'Edit Product' : 'Add New Product'}
+            <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-[#1a1716]/50 block mb-0.5">
+              {isEditing ? `Catalog Entry: ${productId}` : 'New Inventory Item'}
+            </span>
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold italic text-[#1a1716] tracking-tight">
+              {isEditing ? 'Edit Product Specification' : 'Add New Product'}
             </h1>
-            <p className="text-xs text-slate-500">
-              {isEditing
-                ? `Updating product ID: ${productId}`
-                : 'Fill details below to publish directly to the live catalog'}
-            </p>
           </div>
         </div>
 
         {/* Form Actions */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="flex items-center gap-2 self-end sm:self-auto font-mono text-xs">
           <button
             type="button"
             id="btn-cancel-form"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl transition"
+            className="px-4 py-2 text-[#1a1716]/70 hover:text-[#1a1716] uppercase tracking-wider transition cursor-pointer"
           >
             Cancel
           </button>
@@ -335,17 +284,17 @@ export function ProductFormView({
             type="submit"
             id="btn-submit-product-form"
             disabled={isSubmitting}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl shadow-md shadow-amber-500/20 transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1a1716] hover:bg-[#2e4a3d] active:bg-[#233a30] text-white uppercase tracking-widest font-semibold transition cursor-pointer disabled:opacity-50 shadow-sm"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Saving to Supabase...
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Saving...</span>
               </>
             ) : (
               <>
-                <Save className="w-4 h-4" />
-                {isEditing ? 'Update Product' : 'Publish Product'}
+                <Save className="w-3.5 h-3.5" />
+                <span>{isEditing ? 'Update Record' : 'Publish Product'}</span>
               </>
             )}
           </button>
@@ -356,11 +305,11 @@ export function ProductFormView({
       {formError && (
         <div
           id="form-error-alert"
-          className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-900 flex items-start gap-3 animate-in fade-in duration-150"
+          className="p-4 bg-rose-50 border border-rose-200 text-xs font-mono text-rose-900 flex items-start gap-3"
         >
-          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
           <div>
-            <div className="font-bold">Validation or Database Error</div>
+            <div className="font-bold uppercase tracking-wider">Validation Error</div>
             <div className="mt-0.5 text-rose-800">{formError}</div>
           </div>
         </div>
@@ -371,17 +320,17 @@ export function ProductFormView({
         {/* LEFT 2 COLUMNS: Main Fields */}
         <div className="lg:col-span-2 space-y-6">
           {/* 1. Basic Product Info Card */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Package className="w-4 h-4 text-amber-500" />
-              General Details
+          <div className="bg-white p-6 border border-[#1a1716]/10 shadow-2xs space-y-4">
+            <h2 className="font-mono text-xs uppercase tracking-wider font-bold text-[#1a1716] flex items-center gap-2 border-b border-[#1a1716]/10 pb-3">
+              <Package className="w-4 h-4 text-[#2e4a3d]" />
+              General Information
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Product Name */}
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Product Name <span className="text-rose-500">*</span>
+              <div className="sm:col-span-2 space-y-1">
+                <label className="block font-mono text-[10px] uppercase tracking-wider font-semibold text-[#1a1716]/80">
+                  Product Name <span className="text-rose-600">*</span>
                 </label>
                 <input
                   id="input-product-name"
@@ -390,36 +339,36 @@ export function ProductFormView({
                   placeholder="e.g. Havells Life Line Plus 1.5 Sqmm Single Core Copper Wire"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full text-sm px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-medium"
+                  className="w-full text-sm px-3.5 py-2.5 bg-white border border-[#1a1716]/15 focus:outline-none focus:border-[#2e4a3d] font-medium"
                 />
               </div>
 
               {/* Brand */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Brand Name <span className="text-rose-500">*</span>
+              <div className="space-y-1">
+                <label className="block font-mono text-[10px] uppercase tracking-wider font-semibold text-[#1a1716]/80">
+                  Brand <span className="text-rose-600">*</span>
                 </label>
                 <input
                   id="input-product-brand"
                   type="text"
                   required
-                  placeholder="e.g. Havells, Polycab, Tata Tiscon, Anchor"
+                  placeholder="e.g. Havells, Polycab, Tata Tiscon"
                   value={brand}
                   onChange={(e) => setBrand(e.target.value)}
-                  className="w-full text-xs px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full text-xs px-3.5 py-2.5 bg-white border border-[#1a1716]/15 focus:outline-none focus:border-[#2e4a3d]"
                 />
               </div>
 
               {/* Category Dropdown */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Category <span className="text-rose-500">*</span>
+              <div className="space-y-1">
+                <label className="block font-mono text-[10px] uppercase tracking-wider font-semibold text-[#1a1716]/80">
+                  Category <span className="text-rose-600">*</span>
                 </label>
                 <select
                   id="select-product-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value as ProductCategory)}
-                  className="w-full text-xs px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800"
+                  className="w-full text-xs px-3.5 py-2.5 bg-white border border-[#1a1716]/15 focus:outline-none focus:border-[#2e4a3d] font-mono font-semibold text-[#1a1716] uppercase"
                 >
                   <option value="electrical">⚡ Electrical</option>
                   <option value="construction">🏗️ Construction</option>
@@ -427,52 +376,52 @@ export function ProductFormView({
               </div>
 
               {/* Subcategory */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+              <div className="space-y-1">
+                <label className="block font-mono text-[10px] uppercase tracking-wider font-semibold text-[#1a1716]/80">
                   Subcategory
                 </label>
                 <input
                   id="input-product-subcategory"
                   type="text"
-                  placeholder="e.g. FR PVC Wires, TMT Steel, Modular Switches, Conduits"
+                  placeholder="e.g. FR PVC Wires, TMT Steel, Conduits"
                   value={subcategory}
                   onChange={(e) => setSubcategory(e.target.value)}
-                  className="w-full text-xs px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full text-xs px-3.5 py-2.5 bg-white border border-[#1a1716]/15 focus:outline-none focus:border-[#2e4a3d]"
                 />
               </div>
 
               {/* Unit */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+              <div className="space-y-1">
+                <label className="block font-mono text-[10px] uppercase tracking-wider font-semibold text-[#1a1716]/80">
                   Unit of Sale
                 </label>
                 <input
                   id="input-product-unit"
                   type="text"
-                  placeholder='e.g. "1 Coil (90m)", "1 pc", "1 Bundle", "1 Meter"'
+                  placeholder='e.g. "1 Coil (90m)", "1 pc", "1 Bundle"'
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
-                  className="w-full text-xs px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full text-xs px-3.5 py-2.5 bg-white border border-[#1a1716]/15 focus:outline-none focus:border-[#2e4a3d]"
                 />
               </div>
             </div>
           </div>
 
           {/* 2. Pricing & Stock Inventory Card */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Percent className="w-4 h-4 text-emerald-500" />
-              Pricing, Inventory & Delivery
+          <div className="bg-white p-6 border border-[#1a1716]/10 shadow-2xs space-y-4">
+            <h2 className="font-mono text-xs uppercase tracking-wider font-bold text-[#1a1716] flex items-center gap-2 border-b border-[#1a1716]/10 pb-3">
+              <Percent className="w-4 h-4 text-[#2e4a3d]" />
+              Pricing, Inventory & Logistics
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Selling Price */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Selling Price (₹) <span className="text-rose-500">*</span>
+              <div className="space-y-1">
+                <label className="block font-mono text-[10px] uppercase tracking-wider font-semibold text-[#1a1716]/80">
+                  Selling Price (₹) <span className="text-rose-600">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs font-bold">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#1a1716]/40 text-xs font-mono font-bold">
                     ₹
                   </span>
                   <input
@@ -484,19 +433,19 @@ export function ProductFormView({
                     placeholder="1250"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full pl-7 pr-3 py-2.5 bg-white border border-[#1a1716]/15 text-sm font-mono font-bold text-[#1a1716] focus:outline-none focus:border-[#2e4a3d]"
                   />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">Final price charged to customer.</p>
+                <p className="font-mono text-[10px] text-[#1a1716]/50">Customer billing rate.</p>
               </div>
 
-              {/* MRP (Optional) */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Maximum Retail Price / MRP (₹)
+              {/* MRP */}
+              <div className="space-y-1">
+                <label className="block font-mono text-[10px] uppercase tracking-wider font-semibold text-[#1a1716]/80">
+                  List MRP (₹)
                 </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs font-bold">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#1a1716]/40 text-xs font-mono font-bold">
                     ₹
                   </span>
                   <input
@@ -507,23 +456,23 @@ export function ProductFormView({
                     placeholder="1500"
                     value={mrp}
                     onChange={(e) => setMrp(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full pl-7 pr-3 py-2.5 bg-white border border-[#1a1716]/15 text-sm font-mono text-[#1a1716] focus:outline-none focus:border-[#2e4a3d]"
                   />
                 </div>
                 {discountPercentPreview !== null ? (
-                  <p className="text-[11px] font-bold text-emerald-600 mt-1 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
+                  <p className="font-mono text-[10px] font-bold text-[#2e4a3d] flex items-center gap-1">
+                    <Sparkles className="w-2.5 h-2.5" />
                     Preview: {discountPercentPreview}% OFF
                   </p>
                 ) : (
-                  <p className="text-[11px] text-slate-400 mt-1">Optional printed list price.</p>
+                  <p className="font-mono text-[10px] text-[#1a1716]/50">Optional retail label price.</p>
                 )}
               </div>
 
               {/* Stock Quantity */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Warehouse Stock Quantity
+              <div className="space-y-1">
+                <label className="block font-mono text-[10px] uppercase tracking-wider font-semibold text-[#1a1716]/80">
+                  Stock Units
                 </label>
                 <input
                   id="input-product-stock-quantity"
@@ -532,30 +481,30 @@ export function ProductFormView({
                   placeholder="50"
                   value={stockQuantity}
                   onChange={(e) => setStockQuantity(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#1a1716]/15 text-sm font-mono font-bold text-[#1a1716] focus:outline-none focus:border-[#2e4a3d]"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="font-mono text-[10px] text-[#1a1716]/50">
                   {parseInt(stockQuantity, 10) < 10 ? (
-                    <span className="text-rose-600 font-semibold">Low stock warning (&lt;10)</span>
+                    <span className="text-rose-700 font-bold uppercase">Low Stock (&lt;10)</span>
                   ) : (
-                    'Available units in stock'
+                    'Available in warehouse'
                   )}
                 </p>
               </div>
             </div>
 
             {/* Delivery minutes */}
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-4">
+            <div className="pt-3 border-t border-[#1a1716]/10 flex items-center justify-between gap-4 font-mono">
               <div>
-                <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                <label className="text-[11px] font-bold text-[#1a1716] flex items-center gap-1.5 uppercase">
+                  <Clock className="w-3.5 h-3.5 text-[#2e4a3d]" />
                   Estimated Delivery Time (Minutes)
                 </label>
-                <p className="text-[11px] text-slate-400">
-                  Default is 30 mins for rapid emergency warehouse dispatch.
+                <p className="text-[10px] text-[#1a1716]/50">
+                  Default is 30m for rapid infrastructure dispatch.
                 </p>
               </div>
-              <div className="w-32">
+              <div className="w-28">
                 <input
                   id="input-product-delivery-minutes"
                   type="number"
@@ -563,14 +512,14 @@ export function ProductFormView({
                   step="5"
                   value={deliveryMinutes}
                   onChange={(e) => setDeliveryMinutes(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl text-right focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-1.5 text-xs font-bold font-mono bg-white border border-[#1a1716]/15 text-right focus:outline-none focus:border-[#2e4a3d]"
                 />
               </div>
             </div>
           </div>
 
           {/* 3. Image Upload Section */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="bg-white p-6 border border-[#1a1716]/10 shadow-2xs">
             <ImageUploader
               imageUrls={imageUrls}
               onChange={setImageUrls}
@@ -578,23 +527,23 @@ export function ProductFormView({
           </div>
 
           {/* 4. Product Description Card */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <FileText className="w-4 h-4 text-amber-500" />
+          <div className="bg-white p-6 border border-[#1a1716]/10 shadow-2xs space-y-3">
+            <h2 className="font-mono text-xs uppercase tracking-wider font-bold text-[#1a1716] flex items-center gap-2 border-b border-[#1a1716]/10 pb-3">
+              <FileText className="w-4 h-4 text-[#2e4a3d]" />
               Product Description
             </h2>
             <textarea
               id="textarea-product-description"
               rows={4}
-              placeholder="Detailed description of product features, certifications, materials, applications, installation recommendations..."
+              placeholder="Detailed description of product features, ISI/BIS certifications, gauge, conductor grade, applications..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full text-xs leading-relaxed px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-400 text-slate-800"
+              className="w-full text-xs leading-relaxed px-3.5 py-2.5 bg-white border border-[#1a1716]/15 focus:outline-none focus:border-[#2e4a3d] placeholder:text-[#1a1716]/30 text-[#1a1716]"
             />
           </div>
 
           {/* 5. Specifications Builder */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="bg-white p-6 border border-[#1a1716]/10 shadow-2xs">
             <SpecificationsBuilder
               items={specifications}
               onChange={setSpecifications}
@@ -603,7 +552,7 @@ export function ProductFormView({
           </div>
 
           {/* 6. FAQ Builder */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="bg-white p-6 border border-[#1a1716]/10 shadow-2xs">
             <FaqBuilder
               items={faqs}
               onChange={setFaqs}
@@ -614,29 +563,29 @@ export function ProductFormView({
         {/* RIGHT COLUMN: Toggles & Tagging */}
         <div className="space-y-6">
           {/* Status & Catalog Visibility Toggles */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-            <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
-              Catalog Visibility & Badges
+          <div className="bg-white p-6 border border-[#1a1716]/10 shadow-2xs space-y-4">
+            <h2 className="font-mono text-xs uppercase tracking-wider font-bold text-[#1a1716] border-b border-[#1a1716]/10 pb-3">
+              Store Visibility & Flags
             </h2>
 
             {/* In Stock Toggle */}
-            <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+            <div className="flex items-center justify-between gap-3 p-3 bg-[#f2efeb]/60 border border-[#1a1716]/10 font-mono">
               <div>
-                <div className="text-xs font-bold text-slate-800">In Stock / Live in Store</div>
-                <div className="text-[11px] text-slate-500">
-                  {inStock ? 'Visible and purchasable by customers' : 'Hidden from storefront catalog'}
+                <div className="text-[11px] font-bold uppercase text-[#1a1716]">Active in Store</div>
+                <div className="text-[10px] text-[#1a1716]/60">
+                  {inStock ? 'Visible to storefront buyers' : 'Hidden from public'}
                 </div>
               </div>
               <button
                 type="button"
                 id="toggle-form-in-stock"
                 onClick={() => setInStock(!inStock)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  inStock ? 'bg-emerald-500' : 'bg-slate-300'
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors duration-200 ease-in-out focus:outline-none ${
+                  inStock ? 'bg-[#00c067]' : 'bg-[#cfd4dc]'
                 }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.22)] transition duration-200 ease-in-out ${
                     inStock ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
@@ -644,26 +593,26 @@ export function ProductFormView({
             </div>
 
             {/* 30m Emergency Delivery Toggle */}
-            <div className="flex items-center justify-between gap-3 p-3 bg-rose-50/60 rounded-xl border border-rose-200/80">
+            <div className="flex items-center justify-between gap-3 p-3 bg-rose-50/70 border border-rose-200 font-mono">
               <div>
-                <div className="text-xs font-bold text-rose-950 flex items-center gap-1">
+                <div className="text-[11px] font-bold text-rose-950 flex items-center gap-1 uppercase">
                   <Flame className="w-3.5 h-3.5 text-rose-600" />
                   30m Emergency Dispatch
                 </div>
-                <div className="text-[11px] text-rose-800">
-                  Highlight for urgent repair orders
+                <div className="text-[10px] text-rose-800">
+                  Tag for urgent repair calls
                 </div>
               </div>
               <button
                 type="button"
                 id="toggle-form-is-emergency"
                 onClick={() => setIsEmergency(!isEmergency)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  isEmergency ? 'bg-rose-600' : 'bg-slate-300'
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isEmergency ? 'bg-[#ea4335]' : 'bg-[#cfd4dc]'
                 }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.22)] transition duration-200 ease-in-out ${
                     isEmergency ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
@@ -671,26 +620,26 @@ export function ProductFormView({
             </div>
 
             {/* Best Seller Badge Toggle */}
-            <div className="flex items-center justify-between gap-3 p-3 bg-amber-50/60 rounded-xl border border-amber-200/80">
+            <div className="flex items-center justify-between gap-3 p-3 bg-blue-50/50 border border-blue-200/60 font-mono">
               <div>
-                <div className="text-xs font-bold text-amber-950 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <div className="text-[11px] font-bold text-blue-950 flex items-center gap-1 uppercase">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
                   Best Seller Badge
                 </div>
-                <div className="text-[11px] text-amber-800">
-                  Showcase on homepage curated carousel
+                <div className="text-[10px] text-blue-800/80">
+                  Feature in highlighted carousel
                 </div>
               </div>
               <button
                 type="button"
                 id="toggle-form-is-bestseller"
                 onClick={() => setIsBestSeller(!isBestSeller)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  isBestSeller ? 'bg-amber-500' : 'bg-slate-300'
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isBestSeller ? 'bg-[#1a73e8]' : 'bg-[#cfd4dc]'
                 }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.22)] transition duration-200 ease-in-out ${
                     isBestSeller ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
@@ -699,22 +648,22 @@ export function ProductFormView({
           </div>
 
           {/* Colors / Variant Options */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="bg-white p-6 border border-[#1a1716]/10 shadow-2xs">
             <ColorsInput colors={colors} onChange={setColors} />
           </div>
 
           {/* Tags & Search Keywords */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="bg-white p-6 border border-[#1a1716]/10 shadow-2xs">
             <TagsInput tags={tags} onChange={setTags} />
           </div>
 
           {/* Database & Supabase Sync Note */}
-          <div className="bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 space-y-2 text-xs">
-            <div className="font-bold flex items-center gap-1.5 text-amber-400">
-              <Info className="w-4 h-4" /> Live Sync Direct to Supabase
+          <div className="bg-[#2e4a3d] text-white p-5 border border-[#1a1716]/20 space-y-2 font-mono text-xs">
+            <div className="font-bold flex items-center gap-1.5 text-emerald-300 uppercase tracking-wider text-[11px]">
+              <Info className="w-3.5 h-3.5" /> Direct Data Sync
             </div>
-            <p className="text-slate-300 text-[11px] leading-relaxed">
-              When saved, this record writes straight to the <code className="font-mono text-amber-300">products</code> table. Discount percentage is auto-computed by Postgres.
+            <p className="text-white/80 text-[10px] leading-relaxed">
+              Target Supabase project <code className="font-mono text-white font-bold">iffdkhzctkbglmvaayeh</code>. Changes reflect immediately on the public storefront upon publication.
             </p>
           </div>
         </div>

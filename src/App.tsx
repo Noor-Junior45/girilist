@@ -59,12 +59,12 @@ function AppContent() {
   // Loading Screen while authenticating
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-3 text-white">
-        <Loader2 className="w-9 h-9 text-amber-400 animate-spin" />
-        <div className="text-sm font-semibold tracking-wide">
-          Verifying Giriraj Admin Session...
+      <div className="min-h-screen bg-[#f2efeb] flex flex-col items-center justify-center gap-3 text-[#1a1716] font-mono">
+        <Loader2 className="w-8 h-8 text-[#2e4a3d] animate-spin" />
+        <div className="text-xs font-semibold tracking-widest uppercase">
+          Verifying Admin Session...
         </div>
-        <div className="text-xs text-slate-400">Connecting to Supabase security RPC</div>
+        <div className="text-[10px] text-[#1a1716]/60">RPC: iffdkhzctkbglmvaayeh</div>
       </div>
     );
   }
@@ -81,7 +81,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased">
+    <div className="min-h-screen bg-[#f2efeb] text-[#1a1716] flex flex-col font-sans antialiased">
       {/* Admin Top Navigation Bar */}
       <Navbar
         currentPath={currentPath}
@@ -89,7 +89,7 @@ function AppContent() {
       />
 
       {/* Main App Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {isAddProductPage ? (
           <ProductFormView
             onCancel={() => navigate('/')}

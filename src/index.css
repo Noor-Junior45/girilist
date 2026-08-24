@@ -1,1 +1,81 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg: #f2efeb;
+    --ink: #1a1716;
+    --accent: #2e4a3d;
+    --accent-hover: #233a30;
+    --accent-light: #3d5e4f;
+    --ink-faint: rgba(26, 23, 22, 0.08);
+    --ink-muted: #5c5755;
+    --sand-100: #eae6e0;
+    --sand-200: #ded8cf;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: #ffffff;
+  }
+}
+
+/* Custom font utilities */
+.font-display {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.font-sans {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Diagonal architectural hatch background pattern */
+.bg-hatch-corner {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 10px,
+    rgba(26, 23, 22, 0.04) 10px,
+    rgba(26, 23, 22, 0.04) 11px
+  );
+}
+
+.bg-hatch-accent {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 8px,
+    rgba(255, 255, 255, 0.03) 8px,
+    rgba(255, 255, 255, 0.03) 9px
+  );
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f2efeb;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4cec4;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2e4a3d;
+}
