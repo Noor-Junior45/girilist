@@ -18,12 +18,14 @@ import {
   Sparkles, 
   Flame, 
   Loader2,
-  PackageX
+  PackageX,
+  Tag
 } from 'lucide-react';
 
 interface ProductListViewProps {
   onAddProduct: () => void;
   onEditProduct: (id: string) => void;
+  onNavigateToOffers?: () => void;
 }
 
 type SortOption = 'updated_desc' | 'name_asc' | 'price_asc' | 'price_desc' | 'stock_asc';
@@ -31,6 +33,7 @@ type SortOption = 'updated_desc' | 'name_asc' | 'price_asc' | 'price_desc' | 'st
 export function ProductListView({
   onAddProduct,
   onEditProduct,
+  onNavigateToOffers,
 }: ProductListViewProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -183,7 +186,7 @@ export function ProductListView({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
           <button
             type="button"
             id="btn-refresh-products"
@@ -194,6 +197,19 @@ export function ProductListView({
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-[#2e4a3d]' : ''}`} />
           </button>
+
+          {onNavigateToOffers && (
+            <button
+              type="button"
+              id="btn-view-offers"
+              onClick={onNavigateToOffers}
+              className="inline-flex items-center gap-2 px-4 py-3 bg-white border border-[#2e4a3d]/40 hover:bg-[#2e4a3d]/5 text-[#2e4a3d] text-xs font-mono uppercase tracking-widest font-bold transition cursor-pointer shadow-2xs"
+              title="Manage, Edit or Delete Product Offers"
+            >
+              <Tag className="w-4 h-4" />
+              Manage Offers
+            </button>
+          )}
 
           <button
             type="button"

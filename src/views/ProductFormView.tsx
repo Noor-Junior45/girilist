@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Product, ProductCategory, SpecificationItem, FaqItem } from '../types';
+import { Product, ProductCategory, SpecificationItem, FaqItem, Offer } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { ImageUploader } from '../components/ImageUploader';
 import { SpecificationsBuilder } from '../components/SpecificationsBuilder';
 import { FaqBuilder } from '../components/FaqBuilder';
 import { TagsInput } from '../components/TagsInput';
 import { ColorsInput } from '../components/ColorsInput';
+import { ProductOffersSection } from '../components/ProductOffersSection';
 import { useToast } from '../context/ToastContext';
 import { 
   ArrowLeft, 
@@ -18,7 +19,8 @@ import {
   Percent, 
   Info,
   Package,
-  FileText
+  FileText,
+  Tag
 } from 'lucide-react';
 
 interface ProductFormViewProps {
@@ -64,6 +66,56 @@ export function ProductFormView({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Offers state
+  const [availableOffers, setAvailableOffers] = useState<Offer[]>([]);
+  const [selectedOfferIds, setSelectedOfferIds] = useState<string[]>([]);
+  const [isLoadingOffers, setIsLoadingOffers] = useState<boolean>(false);
+
+  const handleOfferSaved = (savedOffer: Offer) => {
+    setAvailableOffers((prev) => {
+      const exists = prev.some((o) => o.id === savedOffer.id);
+      if (exists) {
+        return prev.map((o) => (o.id === savedOffer.id ? savedOffer : o));
+      }
+      return [savedOffer, ...prev];
+    });
+  };
+
+  const handleOfferDeleted = (deletedOfferId: string) => {
+    setAvailableOffers((prev) => prev.filter((o) => o.id !== deletedOfferId));
+    setSelectedOfferIds((prev) => prev.filter((id) => id !== deletedOfferId));
+  };
+
+  // Load all active & available offers from Supabase
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadOffers() {
+      setIsLoadingOffers(true);
+      try {
+        const { data, error } = await supabase
+          .from('offers')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        if (isMounted && data) {
+          setAvailableOffers(data);
+        }
+      } catch (err) {
+        console.warn('Could not fetch offers for product editor:', err);
+      } finally {
+        if (isMounted) setIsLoadingOffers(false);
+      }
+    }
+
+    loadOffers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Fetch product for editing
   useEffect(() => {
     if (!productId) return;
@@ -80,6 +132,16 @@ export function ProductFormView({
           .single();
 
         if (error) throw error;
+
+        // Fetch associated offers for this product from offer_products join table
+        const { data: offerRels, error: relError } = await supabase
+          .from('offer_products')
+          .select('offer_id')
+          .eq('product_id', productId);
+
+        if (relError) {
+          console.warn('Could not fetch product offer relations:', relError);
+        }
 
         if (data && mounted) {
           setName(data.name || '');
@@ -138,6 +200,10 @@ export function ProductFormView({
 
           setTags(Array.isArray(data.tags) ? data.tags : []);
           setColors(Array.isArray(data.colors) ? data.colors : []);
+
+          if (offerRels) {
+            setSelectedOfferIds(offerRels.map((r) => r.offer_id));
+          }
         }
       } catch (err: unknown) {
         console.error('Error fetching product for editing:', err);
@@ -230,6 +296,8 @@ export function ProductFormView({
         updated_at: new Date().toISOString(),
       };
 
+      let currentProductId = productId;
+
       if (isEditing && productId) {
         // UPDATE existing product
         const { error } = await supabase
@@ -248,12 +316,18 @@ export function ProductFormView({
         });
       } else {
         // INSERT new product
-        const { error } = await supabase
+        const { data: insertedProduct, error } = await supabase
           .from('products')
-          .insert(payload);
+          .insert(payload)
+          .select('id')
+          .single();
 
         if (error) {
           throw error;
+        }
+
+        if (insertedProduct) {
+          currentProductId = insertedProduct.id;
         }
 
         showToast({
@@ -261,6 +335,35 @@ export function ProductFormView({
           title: 'Product Created',
           description: `"${name}" is now live in the Giriraj catalog.`,
         });
+      }
+
+      // Synchronize offer_products associations
+      if (currentProductId) {
+        // 1. Delete previous associations for this product
+        const { error: deleteRelError } = await supabase
+          .from('offer_products')
+          .delete()
+          .eq('product_id', currentProductId);
+
+        if (deleteRelError) {
+          console.warn('Error clearing old offer_products:', deleteRelError);
+        }
+
+        // 2. Insert newly selected offer associations
+        if (selectedOfferIds.length > 0) {
+          const relationRows = selectedOfferIds.map((offId) => ({
+            offer_id: offId,
+            product_id: currentProductId,
+          }));
+
+          const { error: insertRelError } = await supabase
+            .from('offer_products')
+            .insert(relationRows);
+
+          if (insertRelError) {
+            console.warn('Error inserting offer_products:', insertRelError);
+          }
+        }
       }
 
       onSuccess();
@@ -586,7 +689,19 @@ export function ProductFormView({
             />
           </div>
 
-          {/* 5. Specifications Builder */}
+          {/* 5. Promotional Offers & Coupons Section */}
+          <ProductOffersSection
+            category={category}
+            price={price}
+            offers={availableOffers}
+            selectedOfferIds={selectedOfferIds}
+            onChangeSelectedOffers={setSelectedOfferIds}
+            isLoadingOffers={isLoadingOffers}
+            onOfferSaved={handleOfferSaved}
+            onOfferDeleted={handleOfferDeleted}
+          />
+
+          {/* 6. Specifications Builder */}
           <div className="bg-white p-6 border border-[#1a1716]/10 shadow-2xs">
             <SpecificationsBuilder
               items={specifications}
@@ -595,7 +710,7 @@ export function ProductFormView({
             />
           </div>
 
-          {/* 6. FAQ Builder */}
+          {/* 7. FAQ Builder */}
           <div className="bg-white p-6 border border-[#1a1716]/10 shadow-2xs">
             <FaqBuilder
               items={faqs}

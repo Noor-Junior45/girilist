@@ -128,6 +128,7 @@ function AppContent() {
           <ProductListView
             onAddProduct={() => navigate('/products/new')}
             onEditProduct={(id) => navigate(`/products/${id}/edit`)}
+            onNavigateToOffers={() => navigate('/offers')}
           />
         )}
       </main>

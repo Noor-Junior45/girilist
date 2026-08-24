@@ -19,6 +19,7 @@ export interface Offer {
   valid_until?: string | null;
   is_active: boolean;
   created_at?: string;
+  updated_at?: string;
   // Computed / Joined relation fields for UI
   product_count?: number;
   product_ids?: string[];
