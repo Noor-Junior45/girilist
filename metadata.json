@@ -1,0 +1,6 @@
+{
+  "name": "Giriraj Product Manager",
+  "description": "Internal admin tool for managing Giriraj Electricals & Construction inventory and product catalog with Supabase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
