@@ -5,7 +5,8 @@ import {
   LogOut, 
   ShieldCheck, 
   Database,
-  Building2
+  Building2,
+  Tag
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -43,27 +44,40 @@ export function Navbar({ currentPath, onNavigate, productCount }: NavbarProps) {
             </button>
 
             {/* Quick Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1 pl-4 border-l border-white/15 text-xs font-mono">
+            <nav className="flex items-center gap-1 pl-4 border-l border-white/15 text-xs font-mono">
               <button
                 id="nav-all-products"
                 onClick={() => onNavigate('/')}
                 className={`px-3 py-1.5 rounded-sm transition-all flex items-center gap-1.5 uppercase tracking-wider text-[11px] cursor-pointer ${
-                  currentPath === '/' || currentPath === '/products'
+                  currentPath === '/' || currentPath === '/products' || currentPath.startsWith('/products/')
                     ? 'bg-white text-[#2e4a3d] font-bold shadow-xs'
                     : 'text-white/80 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <Boxes className="w-3.5 h-3.5" />
-                Catalog
+                <span>Catalog</span>
                 {productCount !== undefined && (
                   <span className={`ml-1 px-1.5 py-0.2 rounded-xs text-[10px] ${
-                    currentPath === '/' || currentPath === '/products'
+                    currentPath === '/' || currentPath === '/products' || currentPath.startsWith('/products/')
                       ? 'bg-[#2e4a3d]/15 text-[#2e4a3d]'
                       : 'bg-white/15 text-white'
                   }`}>
                     {productCount}
                   </span>
                 )}
+              </button>
+
+              <button
+                id="nav-offers"
+                onClick={() => onNavigate('/offers')}
+                className={`px-3 py-1.5 rounded-sm transition-all flex items-center gap-1.5 uppercase tracking-wider text-[11px] cursor-pointer ${
+                  currentPath.startsWith('/offers')
+                    ? 'bg-white text-[#2e4a3d] font-bold shadow-xs'
+                    : 'text-white/80 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <Tag className="w-3.5 h-3.5" />
+                <span>Offers</span>
               </button>
             </nav>
           </div>

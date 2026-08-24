@@ -1,5 +1,52 @@
 export type ProductCategory = 'electrical' | 'construction';
 
+export type DiscountType = 'percentage' | 'flat';
+export type CategoryScope = 'all' | 'electrical' | 'construction';
+export type OfferScopeMode = 'all' | 'category' | 'specific';
+
+export interface Offer {
+  id: string;
+  code: string;
+  title: string;
+  description?: string | null;
+  discount_type: DiscountType;
+  discount_value: number;
+  min_order_value: number;
+  max_discount?: number | null;
+  category_scope: CategoryScope;
+  banner_image?: string | null;
+  valid_from: string;
+  valid_until?: string | null;
+  is_active: boolean;
+  created_at?: string;
+  // Computed / Joined relation fields for UI
+  product_count?: number;
+  product_ids?: string[];
+}
+
+export interface OfferProduct {
+  offer_id: string;
+  product_id: string;
+  created_at?: string;
+}
+
+export interface OfferFormData {
+  code: string;
+  title: string;
+  description: string;
+  discount_type: DiscountType;
+  discount_value: number;
+  min_order_value: number;
+  max_discount: number | null;
+  category_scope: CategoryScope;
+  banner_image: string | null;
+  valid_from: string;
+  valid_until: string | null;
+  is_active: boolean;
+  scope_mode: OfferScopeMode;
+  selected_product_ids: string[];
+}
+
 export interface Product {
   id: string;
   name: string;

@@ -97,8 +97,45 @@ export function ProductFormView({
           setIsBestSeller(data.is_best_seller ?? false);
 
           setImageUrls(Array.isArray(data.image_urls) ? data.image_urls : []);
-          setSpecifications(Array.isArray(data.specifications) ? data.specifications : []);
-          setFaqs(Array.isArray(data.faqs) ? data.faqs : []);
+
+          // Safe specification parsing from array or key-value object
+          const loadedSpecs: SpecificationItem[] = [];
+          if (Array.isArray(data.specifications)) {
+            data.specifications.forEach((s: any, idx: number) => {
+              if (s && typeof s === 'object') {
+                loadedSpecs.push({
+                  id: s.id || `spec-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+                  key: s.key || s.label || s.name || '',
+                  value: s.value !== undefined ? String(s.value) : '',
+                });
+              }
+            });
+          } else if (data.specifications && typeof data.specifications === 'object') {
+            Object.entries(data.specifications).forEach(([k, v], idx) => {
+              loadedSpecs.push({
+                id: `spec-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+                key: k,
+                value: String(v ?? ''),
+              });
+            });
+          }
+          setSpecifications(loadedSpecs);
+
+          // Safe FAQ parsing with guaranteed unique IDs
+          const loadedFaqs: FaqItem[] = [];
+          if (Array.isArray(data.faqs)) {
+            data.faqs.forEach((f: any, idx: number) => {
+              if (f && typeof f === 'object') {
+                loadedFaqs.push({
+                  id: f.id || `faq-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+                  q: f.q ?? f.question ?? '',
+                  a: f.a ?? f.answer ?? '',
+                });
+              }
+            });
+          }
+          setFaqs(loadedFaqs);
+
           setTags(Array.isArray(data.tags) ? data.tags : []);
           setColors(Array.isArray(data.colors) ? data.colors : []);
         }
@@ -179,8 +216,15 @@ export function ProductFormView({
         is_emergency: isEmergency,
         is_best_seller: isBestSeller,
         image_urls: imageUrls.filter((url) => Boolean(url && url.trim())),
-        specifications: specifications.filter((s) => s.key.trim() && s.value.trim()),
-        faqs: faqs.filter((f) => f.question.trim() && f.answer.trim()),
+        specifications: specifications
+          .filter((s) => s.key.trim() && s.value.trim())
+          .map((s) => ({ key: s.key.trim(), value: s.value.trim() })),
+        faqs: faqs
+          .filter((f) => ((f.q ?? (f as any).question ?? '')).trim() && ((f.a ?? (f as any).answer ?? '')).trim())
+          .map((f) => ({
+            q: (f.q ?? (f as any).question ?? '').trim(),
+            a: (f.a ?? (f as any).answer ?? '').trim(),
+          })),
         tags: tags.filter((t) => t.trim()),
         colors: colors.filter((c) => c.trim()),
         updated_at: new Date().toISOString(),

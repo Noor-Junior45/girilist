@@ -35,29 +35,40 @@ const CONSTRUCTION_PRESETS = [
 export function SpecificationsBuilder({ items, onChange, category = 'electrical' }: SpecificationsBuilderProps) {
   const handleAdd = (defaultKey: string = '') => {
     const newItem: SpecificationItem = {
-      id: Math.random().toString(36).substring(2, 9),
+      id: `spec-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       key: defaultKey,
       value: '',
     };
     onChange([...items, newItem]);
   };
 
-  const handleUpdate = (id: string, field: 'key' | 'value', value: string) => {
-    const updated = items.map((item) => {
-      if (item.id === id) {
-        return { ...item, [field]: value };
+  const handleUpdate = (targetId: string, index: number, field: 'key' | 'value', value: string) => {
+    const updated = items.map((item, idx) => {
+      if ((item.id && item.id === targetId) || idx === index) {
+        return { 
+          ...item, 
+          id: item.id || targetId || `spec-${idx}`,
+          [field]: value 
+        };
       }
       return item;
     });
     onChange(updated);
   };
 
-  const handleRemove = (id: string) => {
-    onChange(items.filter((item) => item.id !== id));
+  const handleRemove = (targetId: string, index: number) => {
+    onChange(
+      items.filter((item, idx) => {
+        if (item.id && targetId) {
+          return item.id !== targetId;
+        }
+        return idx !== index;
+      })
+    );
   };
 
   const presets = category === 'electrical' ? ELECTRICAL_PRESETS : CONSTRUCTION_PRESETS;
-  const existingKeys = new Set(items.map((i) => i.key.trim().toLowerCase()));
+  const existingKeys = new Set(items.map((i) => (i.key || '').trim().toLowerCase()));
   const availablePresets = presets.filter((p) => !existingKeys.has(p.toLowerCase()));
 
   return (
@@ -111,43 +122,49 @@ export function SpecificationsBuilder({ items, onChange, category = 'electrical'
         </div>
       ) : (
         <div className="space-y-2" id="specs-list-rows">
-          {items.map((item, index) => (
-            <div
-              key={item.id}
-              id={`spec-row-${index}`}
-              className="flex items-center gap-2 p-2 bg-slate-50/80 rounded-xl border border-slate-200/80 hover:border-slate-300 transition"
-            >
-              <div className="flex-1 min-w-0">
-                <input
-                  id={`spec-key-input-${index}`}
-                  type="text"
-                  placeholder="Specification Label (e.g. Conductor Size)"
-                  value={item.key}
-                  onChange={(e) => handleUpdate(item.id, 'key', e.target.value)}
-                  className="w-full text-xs font-medium px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 placeholder:text-slate-400"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <input
-                  id={`spec-value-input-${index}`}
-                  type="text"
-                  placeholder="Value (e.g. 1.5 Sqmm Copper, 90m Coil)"
-                  value={item.value}
-                  onChange={(e) => handleUpdate(item.id, 'value', e.target.value)}
-                  className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 placeholder:text-slate-400"
-                />
-              </div>
-              <button
-                type="button"
-                id={`btn-remove-spec-${index}`}
-                onClick={() => handleRemove(item.id)}
-                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition shrink-0"
-                title="Delete this specification"
+          {items.map((item, index) => {
+            const itemId = item.id || `spec-row-item-${index}`;
+            const keyVal = item.key ?? '';
+            const valueVal = item.value ?? '';
+
+            return (
+              <div
+                key={itemId}
+                id={`spec-row-${index}`}
+                className="flex items-center gap-2 p-2 bg-slate-50/80 rounded-xl border border-slate-200/80 hover:border-slate-300 transition"
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <input
+                    id={`spec-key-input-${index}`}
+                    type="text"
+                    placeholder="Specification Label (e.g. Conductor Size)"
+                    value={keyVal}
+                    onChange={(e) => handleUpdate(itemId, index, 'key', e.target.value)}
+                    className="w-full text-xs font-medium px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 placeholder:text-slate-400"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <input
+                    id={`spec-value-input-${index}`}
+                    type="text"
+                    placeholder="Value (e.g. 1.5 Sqmm Copper, 90m Coil)"
+                    value={valueVal}
+                    onChange={(e) => handleUpdate(itemId, index, 'value', e.target.value)}
+                    className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 placeholder:text-slate-400"
+                  />
+                </div>
+                <button
+                  type="button"
+                  id={`btn-remove-spec-${index}`}
+                  onClick={() => handleRemove(itemId, index)}
+                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition shrink-0"
+                  title="Delete this specification"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

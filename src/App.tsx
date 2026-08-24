@@ -5,6 +5,8 @@ import { Navbar } from './components/Navbar';
 import { LoginView } from './views/LoginView';
 import { ProductListView } from './views/ProductListView';
 import { ProductFormView } from './views/ProductFormView';
+import { OffersListView } from './views/OffersListView';
+import { OfferFormView } from './views/OfferFormView';
 import { Loader2 } from 'lucide-react';
 
 function AppContent() {
@@ -42,8 +44,13 @@ function AppContent() {
   // Route matching helper
   const isLoginPage = currentPath === '/login';
   const isAddProductPage = currentPath === '/products/new';
-  const editMatch = currentPath.match(/^\/products\/([^/]+)\/edit$/);
-  const editingProductId = editMatch ? editMatch[1] : null;
+  const editProductMatch = currentPath.match(/^\/products\/([^/]+)\/edit$/);
+  const editingProductId = editProductMatch ? editProductMatch[1] : null;
+
+  const isOffersListPage = currentPath === '/offers';
+  const isAddOfferPage = currentPath === '/offers/new';
+  const editOfferMatch = currentPath.match(/^\/offers\/([^/]+)\/edit$/);
+  const editingOfferId = editOfferMatch ? editOfferMatch[1] : null;
 
   // Global Auth Guard: Redirect unauthenticated or non-admin users to /login
   useEffect(() => {
@@ -90,7 +97,23 @@ function AppContent() {
 
       {/* Main App Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isAddProductPage ? (
+        {isAddOfferPage ? (
+          <OfferFormView
+            onCancel={() => navigate('/offers')}
+            onSuccess={() => navigate('/offers')}
+          />
+        ) : editingOfferId ? (
+          <OfferFormView
+            offerId={editingOfferId}
+            onCancel={() => navigate('/offers')}
+            onSuccess={() => navigate('/offers')}
+          />
+        ) : isOffersListPage ? (
+          <OffersListView
+            onCreateOffer={() => navigate('/offers/new')}
+            onEditOffer={(id) => navigate(`/offers/${id}/edit`)}
+          />
+        ) : isAddProductPage ? (
           <ProductFormView
             onCancel={() => navigate('/')}
             onSuccess={() => navigate('/')}

@@ -18,25 +18,36 @@ const FAQ_SUGGESTIONS = [
 export function FaqBuilder({ items, onChange }: FaqBuilderProps) {
   const handleAdd = (defaultQ: string = '') => {
     const newItem: FaqItem = {
-      id: Math.random().toString(36).substring(2, 9),
+      id: `faq-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       q: defaultQ,
       a: '',
     };
     onChange([...items, newItem]);
   };
 
-  const handleUpdate = (id: string, field: 'q' | 'a', value: string) => {
-    const updated = items.map((item) => {
-      if (item.id === id) {
-        return { ...item, [field]: value };
+  const handleUpdate = (targetId: string, index: number, field: 'q' | 'a', value: string) => {
+    const updated = items.map((item, idx) => {
+      if ((item.id && item.id === targetId) || idx === index) {
+        return { 
+          ...item, 
+          id: item.id || targetId || `faq-${idx}`,
+          [field]: value 
+        };
       }
       return item;
     });
     onChange(updated);
   };
 
-  const handleRemove = (id: string) => {
-    onChange(items.filter((item) => item.id !== id));
+  const handleRemove = (targetId: string, index: number) => {
+    onChange(
+      items.filter((item, idx) => {
+        if (item.id && targetId) {
+          return item.id !== targetId;
+        }
+        return idx !== index;
+      })
+    );
   };
 
   return (
@@ -88,50 +99,56 @@ export function FaqBuilder({ items, onChange }: FaqBuilderProps) {
         </div>
       ) : (
         <div className="space-y-3" id="faq-list-rows">
-          {items.map((item, index) => (
-            <div
-              key={item.id}
-              id={`faq-row-${index}`}
-              className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2 relative group hover:border-slate-300 transition"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  FAQ #{index + 1}
-                </span>
-                <button
-                  type="button"
-                  id={`btn-remove-faq-${index}`}
-                  onClick={() => handleRemove(item.id)}
-                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition"
-                  title="Remove this FAQ"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+          {items.map((item, index) => {
+            const itemId = item.id || `faq-row-item-${index}`;
+            const questionVal = item.q ?? (item as any).question ?? '';
+            const answerVal = item.a ?? (item as any).answer ?? '';
 
-              <div>
-                <input
-                  id={`faq-question-input-${index}`}
-                  type="text"
-                  placeholder="Question (e.g. Is this wire 100% pure electrolytic copper?)"
-                  value={item.q}
-                  onChange={(e) => handleUpdate(item.id, 'q', e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:font-normal placeholder:text-slate-400"
-                />
-              </div>
+            return (
+              <div
+                key={itemId}
+                id={`faq-row-${index}`}
+                className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2 relative group hover:border-slate-300 transition"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    FAQ #{index + 1}
+                  </span>
+                  <button
+                    type="button"
+                    id={`btn-remove-faq-${index}`}
+                    onClick={() => handleRemove(itemId, index)}
+                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition"
+                    title="Remove this FAQ"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
-              <div>
-                <textarea
-                  id={`faq-answer-input-${index}`}
-                  rows={2}
-                  placeholder="Answer (e.g. Yes, Havells Life Line Plus wires use 99.97% pure oxygen-free copper...)"
-                  value={item.a}
-                  onChange={(e) => handleUpdate(item.id, 'a', e.target.value)}
-                  className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-400"
-                />
+                <div>
+                  <input
+                    id={`faq-question-input-${index}`}
+                    type="text"
+                    placeholder="Question (e.g. Is this wire 100% pure electrolytic copper?)"
+                    value={questionVal}
+                    onChange={(e) => handleUpdate(itemId, index, 'q', e.target.value)}
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:font-normal placeholder:text-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <textarea
+                    id={`faq-answer-input-${index}`}
+                    rows={2}
+                    placeholder="Answer (e.g. Yes, Havells Life Line Plus wires use 99.97% pure oxygen-free copper...)"
+                    value={answerVal}
+                    onChange={(e) => handleUpdate(itemId, index, 'a', e.target.value)}
+                    className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-400"
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
