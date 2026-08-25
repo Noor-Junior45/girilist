@@ -6,7 +6,8 @@ import {
   AlertCircle, 
   Loader2, 
   ArrowRight,
-  ShieldCheck
+  RefreshCw,
+  ShieldAlert
 } from 'lucide-react';
 
 interface LoginViewProps {
@@ -14,19 +15,22 @@ interface LoginViewProps {
 }
 
 export function LoginView({ onSuccess }: LoginViewProps) {
-  const { signIn } = useAuth();
+  const { signIn, retryAdminCheck, verificationError, isVerifying, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  const displayError = localError || verificationError;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(null);
+    setLocalError(null);
 
     if (!email.trim() || !password) {
-      setErrorMessage('Please enter both your email address and password.');
+      setLocalError('Please enter both your email address and password.');
       return;
     }
 
@@ -37,7 +41,26 @@ export function LoginView({ onSuccess }: LoginViewProps) {
     if (result.success) {
       onSuccess();
     } else {
-      setErrorMessage(result.error || 'Authorization failed. Please verify your credentials or permissions.');
+      setLocalError(result.error || 'Authorization failed. Please verify your credentials or permissions.');
+    }
+  };
+
+  const handleRetryVerification = async () => {
+    setLocalError(null);
+    setIsRetrying(true);
+    try {
+      const check = await retryAdminCheck();
+      if (check.kind === 'admin') {
+        onSuccess();
+      } else if (check.kind === 'not_admin') {
+        setLocalError('This account does not have administrative privileges for Giriraj Product Manager.');
+      } else if (check.kind === 'error') {
+        setLocalError(`Admin verification check failed: ${check.message}`);
+      }
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : 'Failed to retry verification check');
+    } finally {
+      setIsRetrying(false);
     }
   };
 
@@ -72,7 +95,7 @@ export function LoginView({ onSuccess }: LoginViewProps) {
           <div className="relative z-10 space-y-6">
             <div className="inline-flex items-center gap-2 font-mono text-[0.65rem] tracking-wider uppercase border border-white/30 px-3 py-1.5 backdrop-blur-xs text-white/90">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              System: Secure Connection Established
+              System: Secure RLS Connection Established
             </div>
 
             <div>
@@ -109,14 +132,33 @@ export function LoginView({ onSuccess }: LoginViewProps) {
               </h2>
             </header>
 
-            {/* Error Message */}
-            {errorMessage && (
+            {/* Error Message & Retry Box */}
+            {displayError && (
               <div 
                 id="login-error-box"
-                className="mb-6 p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono flex items-start gap-2.5 animate-in fade-in duration-200"
+                className="mb-6 p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono space-y-2.5 animate-in fade-in duration-200"
               >
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                <div className="leading-snug">{errorMessage}</div>
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="leading-snug flex-1">{displayError}</div>
+                </div>
+
+                {user && (
+                  <div className="pt-2 border-t border-rose-200 flex items-center justify-between">
+                    <span className="text-[10px] text-rose-700 font-sans">
+                      Signed in as: <strong className="font-mono">{user.email}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRetryVerification}
+                      disabled={isRetrying || isVerifying}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-700 hover:bg-rose-800 text-white font-mono text-[10px] uppercase font-bold tracking-wider transition cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isRetrying || isVerifying ? 'animate-spin' : ''}`} />
+                      <span>{isRetrying || isVerifying ? 'Verifying...' : 'Retry Verification'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -202,10 +244,10 @@ export function LoginView({ onSuccess }: LoginViewProps) {
             {/* Sync Note Box */}
             <div className="mt-8 p-4 bg-[#f2efeb] border border-[#1a1716]/8 font-mono text-[0.65rem] leading-relaxed text-[#1a1716]/80">
               <div className="font-semibold text-[#1a1716] mb-0.5">
-                DIRECT_DATA_SYNC: <span className="text-[#2e4a3d] font-bold">iffdkhzctkbglmvaayeh</span>
+                DATABASE_CONTRACT: <span className="text-[#2e4a3d] font-bold">public.admin_users (RLS)</span>
               </div>
               <div>
-                Live updates are broadcasted immediately to the public storefront upon modification.
+                Shared Supabase project <span className="font-mono text-[#2e4a3d]">iffdkhzctkbglmvaayeh</span> via verified row-level security.
               </div>
             </div>
           </div>

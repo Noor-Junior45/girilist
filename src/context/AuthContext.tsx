@@ -1,14 +1,18 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { checkAdminMembership, AdminCheck } from '../lib/adminAuth';
 import type { User } from '@supabase/supabase-js';
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
+  adminCheck: AdminCheck | null;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  isVerifying: boolean;
+  verificationError: string | null;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string; check?: AdminCheck }>;
   signOut: () => Promise<void>;
-  checkAdminStatus: () => Promise<boolean>;
+  retryAdminCheck: () => Promise<AdminCheck>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,51 +20,95 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [adminCheck, setAdminCheck] = useState<AdminCheck | null>(null);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
 
-  // Check is_admin RPC on Supabase
-  const checkAdminStatus = async (): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase.rpc('is_admin');
-      if (error) {
-        console.warn('is_admin RPC returned error:', error.message);
-        // If RPC function fails or table is inaccessible, check if user exists in admin_users or return false
-        return false;
-      }
-      return Boolean(data);
-    } catch (err) {
-      console.error('Error invoking is_admin RPC:', err);
-      return false;
+  // Stale check prevention: sequence token & unmount tracker
+  const checkSeqRef = useRef<number>(0);
+  const isMountedRef = useRef<boolean>(true);
+
+  /**
+   * Verified helper to check admin membership using public.admin_users table via RLS.
+   * Enforces that:
+   * - kind === 'admin' => isAdmin: true, user stays signed in.
+   * - kind === 'not_admin' => confirmed non-admin; signOut() executed.
+   * - kind === 'error' => network/query failure; user KEPT signed in, error exposed for retry.
+   */
+  const verifyAdmin = useCallback(async (targetUser: User): Promise<AdminCheck> => {
+    const currentSeq = ++checkSeqRef.current;
+    setIsVerifying(true);
+
+    const checkResult = await checkAdminMembership(targetUser.id);
+
+    // If unmounted or a newer check was triggered while waiting, ignore stale response
+    if (!isMountedRef.current || currentSeq !== checkSeqRef.current) {
+      return checkResult;
     }
-  };
+
+    if (checkResult.kind === 'admin') {
+      setUser(targetUser);
+      setIsAdmin(true);
+      setAdminCheck(checkResult);
+      setVerificationError(null);
+      setIsVerifying(false);
+    } else if (checkResult.kind === 'not_admin') {
+      // Confirmed non-admin: must sign out
+      setAdminCheck(checkResult);
+      setIsAdmin(false);
+      setUser(null);
+      setVerificationError(null);
+      setIsVerifying(false);
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.warn('Sign out error for confirmed non-admin:', err);
+      }
+    } else if (checkResult.kind === 'error') {
+      // Network or DB error: CRITICAL - Keep user signed in, record retryable error
+      setUser(targetUser);
+      setIsAdmin(false);
+      setAdminCheck(checkResult);
+      setVerificationError(checkResult.message);
+      setIsVerifying(false);
+    }
+
+    return checkResult;
+  }, []);
 
   useEffect(() => {
-    let mounted = true;
+    isMountedRef.current = true;
 
     async function initAuth() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && mounted) {
-          setUser(session.user);
-          const admin = await checkAdminStatus();
-          if (mounted) {
-            if (admin) {
-              setIsAdmin(true);
-            } else {
-              // Not admin
-              setIsAdmin(false);
-              await supabase.auth.signOut();
-              setUser(null);
-            }
-          }
-        } else if (mounted) {
+        setIsLoading(true);
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (!isMountedRef.current) return;
+
+        if (sessionError) {
+          console.warn('Error fetching session:', sessionError.message);
           setUser(null);
           setIsAdmin(false);
+          setAdminCheck(null);
+          setVerificationError(null);
+          return;
+        }
+
+        if (session?.user) {
+          setUser(session.user);
+          await verifyAdmin(session.user);
+        } else {
+          setUser(null);
+          setIsAdmin(false);
+          setAdminCheck(null);
+          setVerificationError(null);
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
       } finally {
-        if (mounted) {
+        if (isMountedRef.current) {
           setIsLoading(false);
         }
       }
@@ -69,34 +117,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
+      if (!isMountedRef.current) return;
+
       if (event === 'SIGNED_OUT' || !session) {
+        // Invalidate any pending in-flight async check
+        checkSeqRef.current++;
         setUser(null);
         setIsAdmin(false);
+        setAdminCheck(null);
+        setVerificationError(null);
         setIsLoading(false);
+        setIsVerifying(false);
       } else if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         setUser(session.user);
-        const admin = await checkAdminStatus();
-        if (mounted) {
-          if (admin) {
-            setIsAdmin(true);
-          } else {
-            setIsAdmin(false);
-          }
+        await verifyAdmin(session.user);
+        if (isMountedRef.current) {
           setIsLoading(false);
         }
       }
     });
 
     return () => {
-      mounted = false;
+      isMountedRef.current = false;
+      checkSeqRef.current++;
       authListener?.subscription.unsubscribe();
     };
-  }, []);
+  }, [verifyAdmin]);
 
-  const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const retryAdminCheck = useCallback(async (): Promise<AdminCheck> => {
+    let targetUser = user;
+    if (!targetUser) {
+      const { data: { session } } = await supabase.auth.getSession();
+      targetUser = session?.user || null;
+    }
+
+    if (!targetUser) {
+      const notLoggedIn: AdminCheck = { kind: 'not_admin' };
+      setAdminCheck(notLoggedIn);
+      setIsAdmin(false);
+      setVerificationError('No active authentication session found. Please sign in.');
+      return notLoggedIn;
+    }
+
+    return await verifyAdmin(targetUser);
+  }, [user, verifyAdmin]);
+
+  const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string; check?: AdminCheck }> => {
     try {
       setIsLoading(true);
+      setVerificationError(null);
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -112,24 +182,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'User account not found.' };
       }
 
-      // Check admin status
-      const admin = await checkAdminStatus();
-      if (!admin) {
-        // Sign out immediately
-        await supabase.auth.signOut();
-        setUser(null);
-        setIsAdmin(false);
-        setIsLoading(false);
+      // Check admin membership using public.admin_users
+      const check = await verifyAdmin(data.user);
+      setIsLoading(false);
+
+      if (check.kind === 'admin') {
+        return { success: true, check };
+      }
+
+      if (check.kind === 'not_admin') {
         return {
           success: false,
-          error: 'This account does not have admin access.',
+          error: 'This account does not have administrative privileges for Giriraj Product Manager.',
+          check,
         };
       }
 
-      setUser(data.user);
-      setIsAdmin(true);
-      setIsLoading(false);
-      return { success: true };
+      // kind === 'error'
+      return {
+        success: false,
+        error: `Admin membership verification encountered a network or service error: ${check.message}. Session is active; please retry verification.`,
+        check,
+      };
     } catch (err: unknown) {
       setIsLoading(false);
       const message = err instanceof Error ? err.message : 'An unexpected error occurred during login.';
@@ -140,13 +214,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setIsLoading(true);
+      checkSeqRef.current++;
       await supabase.auth.signOut();
       setUser(null);
       setIsAdmin(false);
+      setAdminCheck(null);
+      setVerificationError(null);
     } catch (err) {
       console.error('Sign out error:', err);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -155,10 +234,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         isAdmin,
+        adminCheck,
         isLoading,
+        isVerifying,
+        verificationError,
         signIn,
         signOut,
-        checkAdminStatus,
+        retryAdminCheck,
       }}
     >
       {children}

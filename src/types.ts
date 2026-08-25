@@ -115,6 +115,11 @@ export interface AdminUser {
   role?: string;
 }
 
+export type AdminCheck =
+  | { kind: 'admin' }
+  | { kind: 'not_admin' }
+  | { kind: 'error'; message: string };
+
 export interface ToastMessage {
   id: string;
   type: 'success' | 'error' | 'info' | 'warning';

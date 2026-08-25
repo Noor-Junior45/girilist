@@ -71,7 +71,7 @@ function AppContent() {
         <div className="text-xs font-semibold tracking-widest uppercase">
           Verifying Admin Session...
         </div>
-        <div className="text-[10px] text-[#1a1716]/60">RPC: iffdkhzctkbglmvaayeh</div>
+        <div className="text-[10px] text-[#1a1716]/60">public.admin_users (RLS) &bull; iffdkhzctkbglmvaayeh</div>
       </div>
     );
   }
