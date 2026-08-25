@@ -240,16 +240,6 @@ export function LoginView({ onSuccess }: LoginViewProps) {
                 )}
               </button>
             </form>
-
-            {/* Sync Note Box */}
-            <div className="mt-8 p-4 bg-[#f2efeb] border border-[#1a1716]/8 font-mono text-[0.65rem] leading-relaxed text-[#1a1716]/80">
-              <div className="font-semibold text-[#1a1716] mb-0.5">
-                DATABASE_CONTRACT: <span className="text-[#2e4a3d] font-bold">public.admin_users (RLS)</span>
-              </div>
-              <div>
-                Shared Supabase project <span className="font-mono text-[#2e4a3d]">iffdkhzctkbglmvaayeh</span> via verified row-level security.
-              </div>
-            </div>
           </div>
         </div>
 
